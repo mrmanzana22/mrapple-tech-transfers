@@ -8,6 +8,15 @@ export interface Tecnico {
   activo: boolean;
 }
 
+export interface PhoneUpdate {
+  id: string;
+  text_body: string;
+  created_at: string;
+  creator: {
+    name: string;
+  };
+}
+
 export interface Phone {
   id: string;
   nombre: string;
@@ -19,6 +28,8 @@ export interface Phone {
   estado_bateria: string;
   fecha_entrega: string;
   tecnico: string;
+  updates?: PhoneUpdate[];
+  tiene_comentarios?: boolean;
 }
 
 export interface TransferPayload {

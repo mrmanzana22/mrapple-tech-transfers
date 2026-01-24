@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, X, Smartphone, User, ArrowRight } from "lucide-react";
+import { Loader2, Upload, X, Smartphone, User, ArrowRight, MessageSquare, Clock } from "lucide-react";
 import { TECNICOS, type Phone, type TransferPayload } from "@/types";
 
 // ============================================
@@ -257,6 +257,42 @@ export function TransferModal({
                     </div>
                   </div>
                 </div>
+
+                {/* Previous Comments */}
+                {phone.updates && phone.updates.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Comentarios Anteriores ({phone.updates.length})
+                    </label>
+                    <div className="max-h-40 overflow-y-auto space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/30 p-3">
+                      {phone.updates.map((update) => (
+                        <div
+                          key={update.id}
+                          className="p-3 rounded-md bg-zinc-800/50 border border-zinc-700/50"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-blue-400">
+                              {update.creator?.name || "Sistema"}
+                            </span>
+                            <span className="text-xs text-zinc-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(update.created_at).toLocaleDateString("es-MX", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-zinc-300 whitespace-pre-wrap">
+                            {update.text_body}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Target Technician Select */}
                 <div className="space-y-2">

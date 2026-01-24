@@ -8,6 +8,7 @@ import {
   Calendar,
   ArrowRightLeft,
   Hash,
+  MessageSquare,
 } from "lucide-react";
 import {
   Card,
@@ -139,13 +140,20 @@ export function PhoneCard({ phone, onTransfer, index = 0 }: PhoneCardProps) {
               </div>
             </div>
 
-            {/* Status badge */}
-            <Badge
-              variant="outline"
-              className={`flex-shrink-0 text-xs font-medium ${estadoConfig.className}`}
-            >
-              {estadoConfig.label}
-            </Badge>
+            {/* Status badge and comments indicator */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {phone.tiene_comentarios && (
+                <div className="p-1.5 rounded-md bg-blue-500/20 border border-blue-500/30">
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                </div>
+              )}
+              <Badge
+                variant="outline"
+                className={`text-xs font-medium ${estadoConfig.className}`}
+              >
+                {estadoConfig.label}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
 

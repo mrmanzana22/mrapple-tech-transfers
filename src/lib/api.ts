@@ -36,20 +36,21 @@ export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
  */
 export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
   try {
-    const response = await fetch(`${baseUrl}${endpoints.getPhones}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ tecnico: tecnicoNombre }),
+    const url = new URL(`${baseUrl}${endpoints.getPhones}`);
+    url.searchParams.set("tecnico", tecnicoNombre);
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
     });
 
     const data = await response.json();
 
-    if (data.success && data.phones) {
-      return { success: true, data: data.phones };
+    // El workflow devuelve un array directo de telefonos
+    if (Array.isArray(data)) {
+      return { success: true, data };
     }
 
+    // Si hay error, viene como objeto { error: "..." }
     return { success: false, error: data.error || "Error al obtener teléfonos" };
   } catch (error) {
     console.error("Get phones error:", error);

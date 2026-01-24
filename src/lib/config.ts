@@ -6,7 +6,7 @@ export const config = {
     baseUrl: "https://appn8n-n8n.lx6zon.easypanel.host/webhook",
     endpoints: {
       login: "/tech-login",
-      getPhones: "/tech-get-phones",
+      getPhones: "/tech-telefonos",
       transfer: "/tech-transferir",
     },
   },
