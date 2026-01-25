@@ -53,17 +53,13 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// Lista de técnicos (temporal, luego viene de Supabase)
+// Lista de técnicos (sincronizado con Monday.com columna Tecnico)
 export const TECNICOS: string[] = [
-  "JUAN ROJAS",
-  "DIEGO JOYA",
-  "LUIS SIERRA",
-  "FRANK",
-  "MILEIDYS",
-  "MANUEL ORTIZ",
-  "CRISTIAN",
-  "JOHAN CARTAGO",
-  "RAUL ROJAS",
+  "JAFETH",
+  "JOCEBAN",
+  "NORMAN",
+  "IDEL",
+  "SERGIO",
 ];
 
 // Estados posibles de un teléfono
