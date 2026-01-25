@@ -16,13 +16,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MrApple Tech - Transferencias",
+  title: "Mr. Manzana - Transferencias",
   description: "Sistema de transferencia de telefonos entre tecnicos",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MrApple Tech",
+    title: "Mr. Manzana",
   },
 };
 

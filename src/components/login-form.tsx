@@ -172,11 +172,11 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icon-512.png"
-              alt="MrApple Tech"
+              alt="Mr. Manzana"
               className="w-20 h-20 object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">MrApple Tech</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">Mr. Manzana</h1>
           <p className="text-zinc-400 text-sm">Ingresa tu PIN de acceso</p>
         </motion.div>
 

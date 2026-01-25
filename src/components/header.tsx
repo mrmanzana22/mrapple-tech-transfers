@@ -39,12 +39,12 @@ export function Header({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icon-192.png"
-              alt="MrApple Tech"
+              alt="Mr. Manzana"
               className="w-8 h-8 object-contain"
             />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-white">MrApple Tech</h1>
+            <h1 className="text-lg font-bold text-white">Mr. Manzana</h1>
             <p className="text-xs text-zinc-500">Transferencias</p>
           </div>
         </div>
