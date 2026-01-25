@@ -209,7 +209,7 @@ export function PhoneCard({ phone, onTransfer, index = 0 }: PhoneCardProps) {
             className="w-full border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
           >
             <ArrowRightLeft className="h-4 w-4 mr-2" />
-            Transferir
+            Adjuntar Evidencia
           </Button>
         </CardFooter>
       </Card>
