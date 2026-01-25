@@ -7,17 +7,19 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, loading, login } = useAuth();
+  const { isAuthenticated, tecnico, loading, login } = useAuth();
 
-  // Redirect to panel if already authenticated
+  // Redirect based on role if already authenticated
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      router.push("/tecnico");
+    if (!loading && isAuthenticated && tecnico) {
+      const destination = tecnico.rol === 'jefe' ? '/jefe' : '/tecnico';
+      router.push(destination);
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, tecnico, loading, router]);
 
-  const handleLoginSuccess = () => {
-    router.push("/tecnico");
+  const handleLoginSuccess = (rol?: string) => {
+    const destination = rol === 'jefe' ? '/jefe' : '/tecnico';
+    router.push(destination);
   };
 
   // Show nothing while checking auth

@@ -6,6 +6,15 @@ export interface Tecnico {
   pin: string;
   monday_status_value: string;
   activo: boolean;
+  rol: 'tecnico' | 'jefe';
+}
+
+export interface TecnicoMetrics {
+  nombre: string;
+  total_transferencias: number;
+  con_foto: number;
+  sin_foto: number;
+  porcentaje_foto: number;
 }
 
 export interface PhoneUpdate {

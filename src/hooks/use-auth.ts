@@ -33,7 +33,7 @@ export function useAuth() {
     }
   }, []);
 
-  const login = useCallback(async (pin: string): Promise<{ success: boolean; error?: string }> => {
+  const login = useCallback(async (pin: string): Promise<{ success: boolean; error?: string; rol?: string }> => {
     setState((prev) => ({ ...prev, loading: true }));
 
     const result = await loginWithPin(pin);
@@ -45,7 +45,7 @@ export function useAuth() {
         tecnico: result.data,
         loading: false,
       });
-      return { success: true };
+      return { success: true, rol: result.data.rol };
     }
 
     setState((prev) => ({ ...prev, loading: false }));

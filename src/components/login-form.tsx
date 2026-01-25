@@ -5,8 +5,8 @@ import Image from "next/image";
 import { Loader2 } from "lucide-react";
 
 interface LoginFormProps {
-  onSuccess: () => void;
-  onLogin: (pin: string) => Promise<{ success: boolean; error?: string }>;
+  onSuccess: (rol?: string) => void;
+  onLogin: (pin: string) => Promise<{ success: boolean; error?: string; rol?: string }>;
 }
 
 export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
@@ -41,7 +41,7 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
       const result = await onLogin(pin);
 
       if (result.success) {
-        onSuccess();
+        onSuccess(result.rol);
       } else {
         triggerError(result.error || "PIN incorrecto");
       }
