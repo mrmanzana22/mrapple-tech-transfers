@@ -213,7 +213,7 @@ export function TransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-zinc-900 border-zinc-800">
+      <DialogContent className="sm:max-w-[500px] p-0 bg-zinc-900 border-zinc-800 max-h-[90vh] overflow-y-auto">
         <motion.div
           variants={modalVariants}
           initial="hidden"
