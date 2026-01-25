@@ -212,19 +212,13 @@ export function TransferModal({
   // ==========================================
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-          <DialogContent
-            className="sm:max-w-[500px] p-0 overflow-hidden bg-zinc-900 border-zinc-800"
-            asChild
-          >
-            <motion.div
-              variants={modalVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-zinc-900 border-zinc-800">
+        <motion.div
+          variants={modalVariants}
+          initial="hidden"
+          animate="visible"
+        >
               {/* Header */}
               <DialogHeader className="p-6 pb-4 border-b border-zinc-800">
                 <DialogTitle className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
@@ -471,7 +465,5 @@ export function TransferModal({
             </motion.div>
           </DialogContent>
         </Dialog>
-      )}
-    </AnimatePresence>
   );
 }
