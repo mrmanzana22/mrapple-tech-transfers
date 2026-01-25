@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
+import useSWR from "swr";
 import { getPhonesByTecnico, transferPhone } from "@/lib/api";
 import type { Phone, TransferPayload } from "@/types";
 
@@ -9,65 +10,71 @@ interface UsePhonesOptions {
   autoFetch?: boolean;
 }
 
+// Fetcher function for SWR
+const phonesFetcher = async (tecnicoNombre: string): Promise<Phone[]> => {
+  const result = await getPhonesByTecnico(tecnicoNombre);
+  if (result.success && result.data) {
+    return result.data;
+  }
+  throw new Error(result.error || "Error al obtener telefonos");
+};
+
 export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions) {
-  const [phones, setPhones] = useState<Phone[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isTransferring, setIsTransferring] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const shouldFetch = autoFetch && tecnicoNombre;
+
+  const {
+    data: phones = [],
+    error,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useSWR(
+    shouldFetch ? tecnicoNombre : null,
+    phonesFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+    }
+  );
 
   const fetchPhones = useCallback(async () => {
-    if (!tecnicoNombre) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await getPhonesByTecnico(tecnicoNombre);
-
-      if (result.success && result.data) {
-        setPhones(result.data);
-      } else {
-        setError(result.error || "Error al obtener telefonos");
-      }
-    } catch {
-      setError("Error de conexion");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tecnicoNombre]);
+    await mutate();
+  }, [mutate]);
 
   const transfer = useCallback(
     async (payload: TransferPayload): Promise<void> => {
-      setIsTransferring(true);
+      // Optimistic update: remove the phone from the list immediately
+      const optimisticPhones = phones.filter((p) => p.id !== payload.item_id);
 
-      try {
-        const result = await transferPhone(payload);
-
-        if (!result.success) {
-          throw new Error(result.error || "Error al transferir");
+      await mutate(
+        async () => {
+          const result = await transferPhone(payload);
+          if (!result.success) {
+            throw new Error(result.error || "Error al transferir");
+          }
+          // Fetch fresh data after transfer
+          const freshResult = await getPhonesByTecnico(tecnicoNombre);
+          if (freshResult.success && freshResult.data) {
+            return freshResult.data;
+          }
+          return optimisticPhones;
+        },
+        {
+          optimisticData: optimisticPhones,
+          rollbackOnError: true,
+          revalidate: true,
         }
-
-        // Refresh the phone list after successful transfer
-        await fetchPhones();
-      } finally {
-        setIsTransferring(false);
-      }
+      );
     },
-    [fetchPhones]
+    [phones, mutate, tecnicoNombre]
   );
-
-  // Auto-fetch on mount if enabled
-  useEffect(() => {
-    if (autoFetch && tecnicoNombre) {
-      fetchPhones();
-    }
-  }, [autoFetch, tecnicoNombre, fetchPhones]);
 
   return {
     phones,
     isLoading,
-    isTransferring,
-    error,
+    isTransferring: isValidating,
+    error: error?.message || null,
     fetchPhones,
     transfer,
   };

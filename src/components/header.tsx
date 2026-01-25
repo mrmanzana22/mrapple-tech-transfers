@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import Image from "next/image";
 import { LogOut, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,21 +26,17 @@ export function Header({
   isRefreshing = false,
 }: HeaderProps) {
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg"
-    >
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg animate-slide-down">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo & Brand */}
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-black shadow-lg shadow-green-500/20 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/icon-192.png"
+              width={32}
+              height={32}
               alt="Mr. Manzana"
-              className="w-8 h-8 object-contain"
+              priority
             />
           </div>
           <div className="hidden sm:block">
@@ -90,6 +86,6 @@ export function Header({
           </Button>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

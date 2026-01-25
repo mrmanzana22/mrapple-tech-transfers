@@ -1,0 +1,455 @@
+/* ============================================
+   ANIMATIONS.CSS - Micro-interacciones Premium
+   MrApple Tech Transfers
+   ============================================ */
+
+/* ============================================
+   KEYFRAMES - Animaciones Base
+   ============================================ */
+
+/* Fade In - Entrada suave */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade Out - Salida suave */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Fade In Up - Entrada desde abajo */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Down - Entrada desde arriba */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Up - Deslizar hacia arriba */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down - Deslizar hacia abajo */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Slide In Left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide In Right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale In - Entrada con escala */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scale Out - Salida con escala */
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Pop In - Entrada elastica */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Shake - Vibracion para errores */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+/* Gentle Shake - Vibracion suave */
+@keyframes gentleShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+/* Shimmer - Efecto skeleton loader */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Pulse Subtle - Pulso suave */
+@keyframes pulseSubtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Spin - Rotacion continua */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Bounce Subtle */
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Float - Efecto flotante */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Pull indicator rotation */
+@keyframes pullRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+/* Refresh spinner */
+@keyframes refreshSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES - Clases de animacion
+   ============================================ */
+
+/* Fade animations */
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 200ms ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 250ms ease-out forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 250ms ease-out forwards;
+}
+
+/* Slide animations */
+.animate-slide-up {
+  animation: slideUp 250ms ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 250ms ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 250ms ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 250ms ease-out forwards;
+}
+
+/* Scale animations */
+.animate-scale-in {
+  animation: scaleIn 200ms ease-out forwards;
+}
+
+.animate-scale-out {
+  animation: scaleOut 200ms ease-out forwards;
+}
+
+.animate-pop-in {
+  animation: popIn 300ms ease-out forwards;
+}
+
+/* Utility animations */
+.animate-shake {
+  animation: shake 400ms ease-out;
+}
+
+.animate-gentle-shake {
+  animation: gentleShake 300ms ease-out;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 1s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ============================================
+   INTERACTION CLASSES - Feedback tactil
+   ============================================ */
+
+/* Pressable - Feedback tactil al presionar */
+.pressable {
+  transition: transform 150ms ease-out, opacity 150ms ease-out;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pressable:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Pressable variants */
+.pressable-sm:active {
+  transform: scale(0.98);
+}
+
+.pressable-lg:active {
+  transform: scale(0.95);
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.3);
+}
+
+/* Hover glow */
+.hover-glow {
+  transition: box-shadow 200ms ease-out;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.15);
+}
+
+/* Focus ring */
+.focus-ring {
+  transition: box-shadow 150ms ease-out, outline 150ms ease-out;
+}
+
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.4);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.6);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   STAGGER ANIMATIONS - Animaciones escalonadas
+   ============================================ */
+
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 250ms ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ============================================
+   TRANSITION UTILITIES
+   ============================================ */
+
+.transition-fast {
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-normal {
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-slow {
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+}
+
+/* Specific property transitions */
+.transition-opacity {
+  transition-property: opacity;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-transform {
+  transition-property: transform;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-colors {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+/* ============================================
+   REDUCED MOTION - Accesibilidad
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-shimmer {
+    animation: none;
+    background: rgba(255, 255, 255, 0.04);
+  }
+}

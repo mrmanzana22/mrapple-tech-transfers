@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import React from "react";
 import {
   Smartphone,
   Battery,
@@ -81,45 +81,25 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-// ============================================
-// ANIMATION VARIANTS
-// ============================================
-
-const cardVariants = {
-  hidden: {
-    opacity: 0,
-    y: 20,
-  },
-  visible: (index: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      delay: index * 0.1,
-      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-    },
-  }),
+// Helper to get stagger delay based on index
+const getStaggerDelay = (index: number): string => {
+  // Cap at 0.8s to prevent too long delays
+  const delay = Math.min(index * 0.1, 0.8);
+  return `${delay}s`;
 };
 
 // ============================================
 // COMPONENT
 // ============================================
 
-export function PhoneCard({ phone, onTransfer, index = 0 }: PhoneCardProps) {
+function PhoneCardComponent({ phone, onTransfer, index = 0 }: PhoneCardProps) {
   const estadoConfig = getEstadoConfig(phone.estado);
   const gradoConfig = getGradoConfig(phone.grado);
 
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      animate="visible"
-      custom={index}
-      whileHover={{
-        scale: 1.02,
-        transition: { duration: 0.2 },
-      }}
-      className="w-full"
+    <div
+      className="w-full animate-fade-in-up card-hover opacity-0"
+      style={{ animationDelay: getStaggerDelay(index), animationFillMode: "forwards" }}
     >
       <Card className="relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 transition-shadow duration-300">
         {/* Gradient accent line */}
@@ -213,9 +193,23 @@ export function PhoneCard({ phone, onTransfer, index = 0 }: PhoneCardProps) {
           </Button>
         </CardFooter>
       </Card>
-    </motion.div>
+    </div>
   );
 }
+
+// Memoize with custom comparator that ignores index changes
+export const PhoneCard = React.memo(PhoneCardComponent, (prevProps, nextProps) => {
+  // Re-render only if phone data or onTransfer changes, ignore index
+  return (
+    prevProps.phone.id === nextProps.phone.id &&
+    prevProps.phone.estado === nextProps.phone.estado &&
+    prevProps.phone.tecnico === nextProps.phone.tecnico &&
+    prevProps.phone.tiene_comentarios === nextProps.phone.tiene_comentarios &&
+    prevProps.onTransfer === nextProps.onTransfer
+  );
+});
+
+PhoneCard.displayName = "PhoneCard";
 
 // ============================================
 // SKELETON LOADER

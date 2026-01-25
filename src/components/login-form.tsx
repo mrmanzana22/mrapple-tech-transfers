@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { Loader2 } from "lucide-react";
 
 interface LoginFormProps {
@@ -14,8 +14,14 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Trigger mount animation
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Auto-submit cuando se completan los 4 digitos
   useEffect(() => {
@@ -123,34 +129,10 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
     [digits]
   );
 
-  // Variantes de animacion
-  const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const inputVariants = {
-    hidden: { opacity: 0, scale: 0.8, y: 20 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: { type: "spring" as const, stiffness: 300, damping: 24 },
-    },
-  };
-
-  const shakeVariants = {
-    shake: {
-      x: [0, -10, 10, -10, 10, -5, 5, 0],
-      transition: { duration: 0.5 },
-    },
+  // Stagger delays for inputs
+  const getStaggerDelay = (index: number) => {
+    const delays = ["0.1s", "0.2s", "0.3s", "0.4s"];
+    return delays[index] || "0s";
   };
 
   return (
@@ -160,34 +142,41 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-green-500/5 rounded-full blur-3xl" />
       </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 w-full max-w-sm"
+      <div
+        className={`relative z-10 w-full max-w-sm ${
+          mounted ? "animate-fade-in-up" : "opacity-0"
+        }`}
       >
         {/* Logo / Titulo */}
-        <motion.div variants={inputVariants} className="text-center mb-10">
+        <div
+          className="text-center mb-10 animate-input-appear"
+          style={{ animationDelay: "0s" }}
+        >
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-black mb-4 shadow-lg shadow-green-500/20 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/icon-512.png"
+              width={80}
+              height={80}
               alt="Mr. Manzana"
-              className="w-20 h-20 object-contain"
+              priority
             />
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">Mr. Manzana</h1>
           <p className="text-zinc-400 text-sm">Ingresa tu PIN de acceso</p>
-        </motion.div>
+        </div>
 
         {/* PIN Inputs */}
-        <motion.div
-          variants={shakeVariants}
-          animate={error ? "shake" : ""}
-          className="flex justify-center gap-3 mb-6"
+        <div
+          className={`flex justify-center gap-3 mb-6 ${
+            error ? "animate-shake" : ""
+          }`}
         >
           {digits.map((digit, index) => (
-            <motion.div key={index} variants={inputVariants}>
+            <div
+              key={index}
+              className="animate-input-appear"
+              style={{ animationDelay: getStaggerDelay(index) }}
+            >
               <input
                 ref={(el) => {
                   inputRefs.current[index] = el;
@@ -221,43 +210,37 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
                 `}
                 aria-label={`Digito ${index + 1} del PIN`}
               />
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Error Message */}
-        <AnimatePresence>
-          {errorMessage && (
-            <motion.p
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="text-red-400 text-sm text-center mb-4"
-            >
-              {errorMessage}
-            </motion.p>
-          )}
-        </AnimatePresence>
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            errorMessage ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <p className="text-red-400 text-sm text-center mb-4">
+            {errorMessage}
+          </p>
+        </div>
 
         {/* Loading Indicator */}
-        <AnimatePresence>
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center gap-2 text-zinc-400"
-            >
-              <Loader2 className="w-5 h-5 animate-spin text-green-400" />
-              <span className="text-sm">Verificando...</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            isLoading ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2 text-zinc-400">
+            <Loader2 className="w-5 h-5 animate-spin text-green-400" />
+            <span className="text-sm">Verificando...</span>
+          </div>
+        </div>
 
         {/* Indicador de estado */}
-        <motion.div
-          variants={inputVariants}
-          className="flex justify-center gap-2 mt-8"
+        <div
+          className="flex justify-center gap-2 mt-8 animate-input-appear"
+          style={{ animationDelay: "0.5s" }}
         >
           {digits.map((digit, index) => (
             <div
@@ -268,16 +251,16 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
               `}
             />
           ))}
-        </motion.div>
+        </div>
 
         {/* Footer */}
-        <motion.p
-          variants={inputVariants}
-          className="text-zinc-500 text-xs text-center mt-8"
+        <p
+          className="text-zinc-500 text-xs text-center mt-8 animate-input-appear"
+          style={{ animationDelay: "0.6s" }}
         >
           Contacta al administrador si olvidaste tu PIN
-        </motion.p>
-      </motion.div>
+        </p>
+      </div>
     </div>
   );
 }
