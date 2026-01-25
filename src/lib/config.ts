@@ -1,9 +1,9 @@
 // Configuration for MrApple Tech Transfers
 
 export const config = {
-  // n8n Webhooks
+  // n8n Webhooks (proxied through Next.js to avoid CORS)
   n8n: {
-    baseUrl: "https://appn8n-n8n.lx6zon.easypanel.host/webhook",
+    baseUrl: "/api/n8n",
     endpoints: {
       login: "/tech-login",
       getPhones: "/tech-telefonos",
