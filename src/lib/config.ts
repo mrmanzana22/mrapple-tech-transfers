@@ -29,8 +29,8 @@ export const config = {
 
   // Supabase
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mhvzpetucfdjkvutmpen.supabase.co",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odnpwZXR1Y2Zkamt2dXRtcGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMDI1MTgsImV4cCI6MjA4Mjg3ODUxOH0.PtUS0tuyXGUeKew2U-FxYIjfvaLsBByQYxxyONEcLOs",
     tableTecnicos: "mrapple_tecnicos",
     tableTransferLogs: "mrapple_transfer_logs",
   },
