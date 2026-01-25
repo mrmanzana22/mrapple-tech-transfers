@@ -40,10 +40,15 @@ export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
  */
 export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
   try {
-    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
+    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}&_t=${Date.now()}`;
 
     const response = await fetch(url, {
       method: "GET",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+      },
     });
 
     const data = await response.json();
