@@ -29,7 +29,8 @@ export const config = {
 
   // Supabase
   supabase: {
-    url: "https://mhvzpetucfdjkvutmpen.supabase.co",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mhvzpetucfdjkvutmpen.supabase.co",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     tableTecnicos: "mrapple_tecnicos",
     tableTransferLogs: "mrapple_transfer_logs",
   },

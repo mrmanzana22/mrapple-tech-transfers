@@ -17,6 +17,49 @@ export interface TecnicoMetrics {
   porcentaje_foto: number;
 }
 
+// Extended metrics para dashboard del Jefe
+export interface TecnicoMetricsExtended extends TecnicoMetrics {
+  tendencia: 'up' | 'down' | 'stable'; // comparado con período anterior
+  promedio_diario: number;
+  dias_activos: number;
+}
+
+// Totales del dashboard
+export interface DashboardTotals {
+  total_transferencias: number;
+  total_con_foto: number;
+  total_sin_foto: number;
+  porcentaje_foto_global: number;
+  tendencia: 'up' | 'down' | 'stable';
+  vs_periodo_anterior: number; // porcentaje de cambio
+}
+
+// Datos para gráfico semanal
+export interface WeeklyData {
+  dia: string; // 'Lun', 'Mar', etc.
+  fecha: string; // ISO date
+  transferencias: number;
+  con_foto: number;
+  sin_foto: number;
+}
+
+// Historial detallado de un técnico
+export interface TecnicoHistorial {
+  tecnico_nombre: string;
+  periodo: {
+    inicio: string;
+    fin: string;
+  };
+  metricas: TecnicoMetricsExtended;
+  por_dia: WeeklyData[];
+  transferencias_recientes: {
+    id: string;
+    telefono: string;
+    fecha: string;
+    tiene_foto: boolean;
+  }[];
+}
+
 export interface PhoneUpdate {
   id: string;
   text_body: string;

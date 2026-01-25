@@ -5,7 +5,7 @@ import type { Tecnico, Phone, TransferPayload, ApiResponse } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
 const SUPABASE_URL = config.supabase.url;
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odnpwZXR1Y2Zkamt2dXRtcGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMDI1MTgsImV4cCI6MjA4Mjg3ODUxOH0.PtUS0tuyXGUeKew2U-FxYIjfvaLsBByQYxxyONEcLOs";
+const SUPABASE_ANON_KEY = config.supabase.anonKey;
 
 /**
  * Validates PIN and returns tecnico data (direct Supabase call)
