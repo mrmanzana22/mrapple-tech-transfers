@@ -1,30 +1,34 @@
-// API calls to n8n webhooks
+// API calls to n8n webhooks and Supabase
 
 import { config } from "./config";
 import type { Tecnico, Phone, TransferPayload, ApiResponse } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
+const SUPABASE_URL = config.supabase.url;
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odnpwZXR1Y2Zkamt2dXRtcGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMDI1MTgsImV4cCI6MjA4Mjg3ODUxOH0.PtUS0tuyXGUeKew2U-FxYIjfvaLsBByQYxxyONEcLOs";
 
 /**
- * Validates PIN and returns tecnico data
+ * Validates PIN and returns tecnico data (direct Supabase call)
  */
 export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
   try {
-    const response = await fetch(`${baseUrl}${endpoints.login}`, {
-      method: "POST",
+    const url = `${SUPABASE_URL}/rest/v1/${config.supabase.tableTecnicos}?pin=eq.${pin}&activo=eq.true&select=*`;
+
+    const response = await fetch(url, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ pin }),
     });
 
     const data = await response.json();
 
-    if (data.success && data.tecnico) {
-      return { success: true, data: data.tecnico };
+    if (Array.isArray(data) && data.length > 0) {
+      return { success: true, data: data[0] as Tecnico };
     }
 
-    return { success: false, error: data.error || "PIN incorrecto" };
+    return { success: false, error: "PIN incorrecto o usuario inactivo" };
   } catch (error) {
     console.error("Login error:", error);
     return { success: false, error: "Error de conexión" };
