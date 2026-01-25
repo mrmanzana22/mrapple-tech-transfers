@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/n8n/:path*',
-        destination: 'https://n8n.easypanel.host/webhook/:path*',
+        destination: 'https://appn8n-n8n.lx6zon.easypanel.host/webhook/:path*',
       },
     ];
   },
