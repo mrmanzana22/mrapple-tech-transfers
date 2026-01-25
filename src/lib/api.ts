@@ -63,6 +63,33 @@ export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResp
 }
 
 /**
+ * Gets active technicians from Supabase (dynamic, not hardcoded)
+ */
+export async function fetchTecnicosActivos(): Promise<string[]> {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/${config.supabase.tableTecnicos}?rol=eq.tecnico&activo=eq.true&select=nombre`;
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      return data.map((t: { nombre: string }) => t.nombre);
+    }
+
+    return [];
+  } catch (error) {
+    console.error("Fetch tecnicos error:", error);
+    return [];
+  }
+}
+
+/**
  * Transfers a phone to another tecnico
  */
 export async function transferPhone(payload: TransferPayload): Promise<ApiResponse<{ item_id: string }>> {

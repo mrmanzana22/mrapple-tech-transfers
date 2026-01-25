@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Upload, X, Smartphone, User, ArrowRight, MessageSquare, Clock } from "lucide-react";
-import { TECNICOS, type Phone, type TransferPayload } from "@/types";
+import { fetchTecnicosActivos } from "@/lib/api";
+import type { Phone, TransferPayload } from "@/types";
 
 // ============================================
 // TYPES
@@ -54,8 +55,16 @@ export function TransferModal({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Dynamic technicians from Supabase
+  const [tecnicos, setTecnicos] = useState<string[]>([]);
+
+  // Load technicians on mount
+  useEffect(() => {
+    fetchTecnicosActivos().then(setTecnicos);
+  }, []);
+
   // Filter out current technician from available options
-  const availableTechnicians = TECNICOS.filter(
+  const availableTechnicians = tecnicos.filter(
     (tech) => tech !== currentTecnico
   );
 

@@ -106,14 +106,9 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// Lista de técnicos (sincronizado con Monday.com columna Tecnico)
-export const TECNICOS: string[] = [
-  "JAFETH",
-  "JOCEBAN",
-  "NORMAN",
-  "IDEL",
-  "SERGIO",
-];
+// @deprecated - Usar fetchTecnicosActivos() de api.ts en su lugar
+// Esta lista ahora se carga dinámicamente desde Supabase (tabla mrapple_tecnicos)
+// export const TECNICOS: string[] = ["JAFETH", "JOCEBAN", "NORMAN", "IDEL", "SERGIO"];
 
 // Estados posibles de un teléfono
 export const PHONE_STATES = {

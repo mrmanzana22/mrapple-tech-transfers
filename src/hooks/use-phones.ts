@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import useSWR from "swr";
 import { getPhonesByTecnico, transferPhone } from "@/lib/api";
+import { config } from "@/lib/config";
 import type { Phone, TransferPayload } from "@/types";
 
 interface UsePhonesOptions {
@@ -45,11 +46,11 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     {
       revalidateOnFocus: true,           // Actualiza al volver a la tab
       revalidateOnReconnect: true,
-      dedupingInterval: 2000,            // Reducido a 2s
-      refreshInterval: 30000,            // Polling cada 30 segundos
-      refreshWhenHidden: false,          // No polling si tab en background
-      errorRetryCount: 3,                // Limitar reintentos
-      errorRetryInterval: 5000,          // 5s entre reintentos
+      dedupingInterval: config.intervals.deduping,
+      refreshInterval: config.intervals.polling,
+      refreshWhenHidden: false,
+      errorRetryCount: 3,
+      errorRetryInterval: config.intervals.errorRetry,
       fallbackData: getFallbackData(),   // Carga instantánea con datos previos
       onSuccess: (data) => {
         // Guardar en localStorage para próxima carga instantánea

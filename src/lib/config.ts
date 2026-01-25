@@ -13,32 +13,39 @@ export const config = {
 
   // Monday.com Board Info
   monday: {
-    boardId: "672309386",
+    boardId: process.env.NEXT_PUBLIC_MONDAY_BOARD_ID || "672309386",
     columns: {
-      tecnico: "color_mkzxt1at",
-      imei: "texto7",
-      estado: "estado",
-      color: "texto6",
-      grado: "text",
-      gb: "gb0",
-      estadoBateria: "texto07",
-      fechaEntrega: "fecha6",
+      tecnico: process.env.NEXT_PUBLIC_MONDAY_COL_TECNICO || "color_mkzxt1at",
+      imei: process.env.NEXT_PUBLIC_MONDAY_COL_IMEI || "texto7",
+      estado: process.env.NEXT_PUBLIC_MONDAY_COL_ESTADO || "estado",
+      color: process.env.NEXT_PUBLIC_MONDAY_COL_COLOR || "texto6",
+      grado: process.env.NEXT_PUBLIC_MONDAY_COL_GRADO || "text",
+      gb: process.env.NEXT_PUBLIC_MONDAY_COL_GB || "gb0",
+      estadoBateria: process.env.NEXT_PUBLIC_MONDAY_COL_ESTADO_BATERIA || "texto07",
+      fechaEntrega: process.env.NEXT_PUBLIC_MONDAY_COL_FECHA_ENTREGA || "fecha6",
     },
-    grupoReparaciones: "grupo_nuevo83404",
+    grupoReparaciones: process.env.NEXT_PUBLIC_MONDAY_GROUP_REPARACIONES || "grupo_nuevo83404",
   },
 
   // Supabase
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mhvzpetucfdjkvutmpen.supabase.co",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     tableTecnicos: "mrapple_tecnicos",
     tableTransferLogs: "mrapple_transfer_logs",
   },
 
+  // Intervals (ms)
+  intervals: {
+    polling: Number(process.env.NEXT_PUBLIC_POLLING_INTERVAL) || 30000,
+    deduping: Number(process.env.NEXT_PUBLIC_DEDUPING_INTERVAL) || 2000,
+    errorRetry: Number(process.env.NEXT_PUBLIC_ERROR_RETRY_INTERVAL) || 5000,
+    toast: Number(process.env.NEXT_PUBLIC_TOAST_DURATION) || 5000,
+  },
+
   // UI Config
   ui: {
     pinLength: 4,
-    toastDuration: 3000,
   },
 } as const;
 
