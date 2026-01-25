@@ -345,7 +345,7 @@ export function TransferModal({
                       <img
                         src={photoPreview}
                         alt="Preview"
-                        className="w-full h-48 object-cover"
+                        className="w-full h-64 object-cover"
                       />
                       <button
                         type="button"
