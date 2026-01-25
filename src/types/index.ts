@@ -28,6 +28,7 @@ export interface Phone {
   estado_bateria: string;
   fecha_entrega: string;
   tecnico: string;
+  cliente?: string; // Daño/problema del teléfono (columna CLIENTE en Monday)
   updates?: PhoneUpdate[];
   tiene_comentarios?: boolean;
 }

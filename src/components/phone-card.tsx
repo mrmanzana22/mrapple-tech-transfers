@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Hash,
   MessageSquare,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Card,
@@ -173,8 +174,20 @@ function PhoneCardComponent({ phone, onTransfer, index = 0 }: PhoneCardProps) {
             </div>
           </div>
 
+          {/* Daño/Cliente - Solo mostrar si tiene contenido */}
+          {phone.cliente && (
+            <div className="mt-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-300 leading-relaxed">
+                  {phone.cliente}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Grade badge */}
-          <div className="mt-4">
+          <div className="mt-3">
             <Badge variant="secondary" className={`text-xs ${gradoConfig.className}`}>
               {gradoConfig.label}
             </Badge>
@@ -205,6 +218,7 @@ export const PhoneCard = React.memo(PhoneCardComponent, (prevProps, nextProps) =
     prevProps.phone.estado === nextProps.phone.estado &&
     prevProps.phone.tecnico === nextProps.phone.tecnico &&
     prevProps.phone.tiene_comentarios === nextProps.phone.tiene_comentarios &&
+    prevProps.phone.cliente === nextProps.phone.cliente &&
     prevProps.onTransfer === nextProps.onTransfer
   );
 });
