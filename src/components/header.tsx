@@ -13,6 +13,7 @@ interface HeaderProps {
   onLogout: () => void;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  isSyncing?: boolean;
 }
 
 // ============================================
@@ -24,6 +25,7 @@ export function Header({
   onLogout,
   onRefresh,
   isRefreshing = false,
+  isSyncing = false,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg animate-slide-down">
@@ -60,19 +62,27 @@ export function Header({
             {tecnicoNombre}
           </span>
 
-          {/* Refresh button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="text-zinc-400 hover:text-white hover:bg-zinc-800"
-          >
-            <RefreshCw
-              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            <span className="sr-only">Actualizar</span>
-          </Button>
+          {/* Sync indicator + Refresh button */}
+          <div className="flex items-center gap-2">
+            {isSyncing && (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-xs text-green-400 hidden sm:inline">Sincronizando</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+            >
+              <RefreshCw
+                className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              <span className="sr-only">Actualizar</span>
+            </Button>
+          </div>
 
           {/* Logout button */}
           <Button

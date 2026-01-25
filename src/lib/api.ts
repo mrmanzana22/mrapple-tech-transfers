@@ -37,18 +37,14 @@ export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
 
 /**
  * Gets phones assigned to a tecnico
+ * Nota: Sin cache buster - SWR maneja la invalidación de cache
  */
 export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
   try {
-    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}&_t=${Date.now()}`;
+    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
 
     const response = await fetch(url, {
       method: "GET",
-      cache: "no-store",
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-      },
     });
 
     const data = await response.json();

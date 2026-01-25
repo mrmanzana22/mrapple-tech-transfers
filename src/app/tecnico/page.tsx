@@ -18,6 +18,7 @@ export default function TecnicoPage() {
   const {
     phones,
     isLoading: phonesLoading,
+    isSyncing,
     fetchPhones,
     transfer,
   } = usePhones({
@@ -92,6 +93,7 @@ export default function TecnicoPage() {
         onLogout={handleLogout}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        isSyncing={isSyncing}
       />
 
       <main className="container mx-auto px-4 py-6">
