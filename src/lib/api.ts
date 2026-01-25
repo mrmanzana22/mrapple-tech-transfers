@@ -40,10 +40,9 @@ export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
  */
 export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
   try {
-    const url = new URL(`${baseUrl}${endpoints.getPhones}`);
-    url.searchParams.set("tecnico", tecnicoNombre);
+    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       method: "GET",
     });
 
