@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
@@ -8,6 +8,7 @@ import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
+import { subscribeToPush, registerServiceWorker } from "@/lib/push";
 import type { Phone, TransferPayload } from "@/types";
 
 export default function TecnicoPage() {
@@ -37,6 +38,28 @@ export default function TecnicoPage() {
       router.push("/");
     }
   }, [authLoading, isAuthenticated, router]);
+
+  // Push notifications subscription
+  const pushSubscribed = useRef(false);
+  useEffect(() => {
+    if (!tecnico?.nombre || pushSubscribed.current) return;
+
+    const setupPush = async () => {
+      // Registrar Service Worker primero
+      await registerServiceWorker();
+
+      // Esperar un poco para que el usuario vea la página primero
+      setTimeout(async () => {
+        const subscribed = await subscribeToPush(tecnico.nombre);
+        if (subscribed) {
+          pushSubscribed.current = true;
+          console.log('Push notifications enabled for:', tecnico.nombre);
+        }
+      }, 2000);
+    };
+
+    setupPush();
+  }, [tecnico?.nombre]);
 
   // Handlers
   const handleLogout = useCallback(() => {
