@@ -44,7 +44,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export function BarChart({ data, dataKey, nameKey, color = "#3b82f6" }: BarChartProps) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
       <RechartsBarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <XAxis
           dataKey={nameKey}

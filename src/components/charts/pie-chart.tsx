@@ -103,7 +103,7 @@ export function PieChart({ data }: PieChartProps) {
   const dataWithTotal = data.map((item) => ({ ...item, total }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
       <RechartsPieChart>
         <Pie
           data={dataWithTotal}

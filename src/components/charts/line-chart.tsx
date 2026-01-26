@@ -56,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export function LineChart({ data, lines, xAxisKey = "name" }: LineChartProps) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
       <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
         <XAxis
