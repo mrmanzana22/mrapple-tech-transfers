@@ -4,11 +4,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getSessionCookie, clearSessionCookie, validateCsrf, csrfError } from '@/lib/auth-server';
+import { handleCorsOptions, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsOptions(request);
+}
 
 export async function POST(request: NextRequest) {
   // CSRF check
   if (!validateCsrf(request)) {
-    return csrfError();
+    return addCorsHeaders(csrfError(), request);
   }
 
   try {
@@ -27,13 +32,12 @@ export async function POST(request: NextRequest) {
     // Clear cookie regardless
     const response = NextResponse.json({ success: true });
     response.headers.set('Set-Cookie', clearSessionCookie());
-
-    return response;
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Logout error:', error);
     // Still clear cookie even on error
     const response = NextResponse.json({ success: true });
     response.headers.set('Set-Cookie', clearSessionCookie());
-    return response;
+    return addCorsHeaders(response, request);
   }
 }

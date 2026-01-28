@@ -1,39 +1,10 @@
-// API calls to n8n webhooks and Supabase
+// API calls to n8n webhooks
+// Note: All Supabase calls now go through server-side API routes (no anon key in frontend)
 
 import { config } from "./config";
-import type { Tecnico, Phone, TransferPayload, ApiResponse, ReparacionCliente } from "@/types";
+import type { Phone, TransferPayload, ApiResponse, ReparacionCliente } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
-const SUPABASE_URL = config.supabase.url;
-const SUPABASE_ANON_KEY = config.supabase.anonKey;
-
-/**
- * Validates PIN and returns tecnico data (direct Supabase call)
- */
-export async function loginWithPin(pin: string): Promise<ApiResponse<Tecnico>> {
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/${config.supabase.tableTecnicos}?pin=eq.${pin}&activo=eq.true&select=*`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0) {
-      return { success: true, data: data[0] as Tecnico };
-    }
-
-    return { success: false, error: "PIN incorrecto o usuario inactivo" };
-  } catch (error) {
-    console.error("Login error:", error);
-    return { success: false, error: "Error de conexión" };
-  }
-}
 
 /**
  * Gets phones assigned to a tecnico
@@ -63,23 +34,21 @@ export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResp
 }
 
 /**
- * Gets active technicians from Supabase (dynamic, not hardcoded)
+ * Gets active technicians via API (session required)
  */
 export async function fetchTecnicosActivos(): Promise<string[]> {
   try {
-    const url = `${SUPABASE_URL}/rest/v1/${config.supabase.tableTecnicos}?rol=eq.tecnico&activo=eq.true&select=nombre`;
-
-    const response = await fetch(url, {
+    const response = await fetch('/api/tecnicos/activos', {
+      credentials: 'include',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'X-Requested-With': 'mrapple',
       },
     });
 
     const data = await response.json();
 
-    if (Array.isArray(data)) {
-      return data.map((t: { nombre: string }) => t.nombre);
+    if (data.success && Array.isArray(data.data)) {
+      return data.data.map((t: { nombre: string }) => t.nombre);
     }
 
     return [];

@@ -4,11 +4,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { createSessionCookie, getClientIp, validateCsrf, csrfError } from '@/lib/auth-server';
+import { handleCorsOptions, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsOptions(request);
+}
 
 export async function POST(request: NextRequest) {
   // CSRF check
   if (!validateCsrf(request)) {
-    return csrfError();
+    return addCorsHeaders(csrfError(), request);
   }
 
   try {
@@ -17,10 +22,11 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!pin || typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { success: false, code: 'INVALID_INPUT', error: 'PIN inválido' },
         { status: 400 }
       );
+      return addCorsHeaders(res, request);
     }
 
     const ip = getClientIp(request);
@@ -34,16 +40,17 @@ export async function POST(request: NextRequest) {
 
     if (loginError) {
       console.error('Login RPC error:', loginError);
-      return NextResponse.json(
+      const res = NextResponse.json(
         { success: false, code: 'SERVER_ERROR', error: 'Error de servidor' },
         { status: 500 }
       );
+      return addCorsHeaders(res, request);
     }
 
     // Check login result
     if (!loginResult.success) {
       const status = loginResult.code === 'RATE_LIMIT' ? 429 : 401;
-      return NextResponse.json(
+      const res = NextResponse.json(
         {
           success: false,
           code: loginResult.code,
@@ -52,6 +59,7 @@ export async function POST(request: NextRequest) {
         },
         { status }
       );
+      return addCorsHeaders(res, request);
     }
 
     // Login successful - create server-side session
@@ -66,10 +74,11 @@ export async function POST(request: NextRequest) {
 
     if (sessionError || !sessionId) {
       console.error('Session creation error:', sessionError);
-      return NextResponse.json(
+      const res = NextResponse.json(
         { success: false, code: 'SESSION_ERROR', error: 'Error al crear sesión' },
         { status: 500 }
       );
+      return addCorsHeaders(res, request);
     }
 
     // Build response with httpOnly cookie
@@ -84,13 +93,13 @@ export async function POST(request: NextRequest) {
     });
 
     response.headers.set('Set-Cookie', createSessionCookie(sessionId, 8));
-
-    return response;
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
+    const res = NextResponse.json(
       { success: false, code: 'SERVER_ERROR', error: 'Error de servidor' },
       { status: 500 }
     );
+    return addCorsHeaders(res, request);
   }
 }
