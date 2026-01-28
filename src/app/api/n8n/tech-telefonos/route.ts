@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     // Determine which tecnico to query
     let tecnicoQuery: string;
 
-    if (session.rol === "jefe") {
-      // Jefe can query any tecnico via query param
+    if (session.puede_ver_equipo || session.rol === "jefe") {
+      // Users with puede_ver_equipo can query any tecnico via query param
       const requestedTecnico = request.nextUrl.searchParams.get("tecnico");
       if (!requestedTecnico) {
         const res = NextResponse.json(
