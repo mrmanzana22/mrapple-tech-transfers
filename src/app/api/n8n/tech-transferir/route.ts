@@ -11,6 +11,7 @@ import {
   markIdempotencySuccess,
   markIdempotencyFailed,
 } from "@/lib/idempotency";
+import { cache } from "@/lib/cache";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -131,9 +132,11 @@ export async function POST(req: NextRequest) {
       json = { raw: text };
     }
 
-    // Mark idempotency result
+    // Mark idempotency result + invalidate cache
     if (n8nRes.ok && json.success !== false) {
       await markIdempotencySuccess(requestId, "transfer_phone", json);
+      // Invalidate cache for both origin and destination tecnico
+      cache.invalidatePattern("telefonos:");
     } else {
       await markIdempotencyFailed(requestId, "transfer_phone", json);
     }

@@ -2,6 +2,7 @@
 // Note: All Supabase calls now go through server-side API routes (no anon key in frontend)
 
 import { config } from "./config";
+import { compressImageForUpload } from "./image-compress";
 import type { Phone, TransferPayload, ApiResponse, ReparacionCliente } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
@@ -92,7 +93,11 @@ export async function transferPhone(payload: TransferPayload): Promise<ApiRespon
     }
 
     if (payload.foto) {
-      formData.append("foto", payload.foto);
+      // Compress image before upload (reduces size by ~70%)
+      const compressedFoto = await compressImageForUpload(payload.foto);
+      if (compressedFoto) {
+        formData.append("foto", compressedFoto);
+      }
     }
 
     const response = await fetch(`${baseUrl}${endpoints.transfer}`, {
@@ -227,7 +232,11 @@ export async function transferirReparacion(payload: {
       formData.append("comentario", payload.comentario);
     }
     if (payload.foto) {
-      formData.append("foto", payload.foto);
+      // Compress image before upload (reduces size by ~70%)
+      const compressedFoto = await compressImageForUpload(payload.foto);
+      if (compressedFoto) {
+        formData.append("foto", compressedFoto);
+      }
     }
 
     const response = await fetch(`${baseUrl}${endpoints.transferirReparacion}`, {

@@ -2,10 +2,12 @@
 // Returns phones for the authenticated technician
 // Protected: requires valid session
 // Role filtering: tecnico sees only their phones, jefe can query any
+// Cached: 45s TTL to reduce n8n/Monday calls
 
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/auth-server";
 import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
+import { cache, CACHE_TTL } from "@/lib/cache";
 
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || "https://appn8n-n8n.lx6zon.easypanel.host/webhook";
 
@@ -44,6 +46,16 @@ export async function GET(request: NextRequest) {
       tecnicoQuery = session.nombre;
     }
 
+    // Check cache first
+    const cacheKey = `telefonos:${tecnicoQuery}`;
+    const cached = cache.get<unknown[]>(cacheKey);
+
+    if (cached) {
+      const res = NextResponse.json(cached);
+      res.headers.set("X-Cache", "HIT");
+      return addCorsHeaders(res, request);
+    }
+
     // Forward to n8n
     const n8nUrl = `${N8N_BASE}/tech-telefonos?tecnico=${encodeURIComponent(tecnicoQuery)}`;
     const n8nResponse = await fetch(n8nUrl);
@@ -51,7 +63,11 @@ export async function GET(request: NextRequest) {
 
     // n8n returns array directly or { error: "..." }
     if (Array.isArray(data)) {
+      // Cache successful response
+      cache.set(cacheKey, data, CACHE_TTL.TELEFONOS);
+
       const res = NextResponse.json(data);
+      res.headers.set("X-Cache", "MISS");
       return addCorsHeaders(res, request);
     }
 

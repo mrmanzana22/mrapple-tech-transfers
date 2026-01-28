@@ -11,6 +11,7 @@ import {
   markIdempotencySuccess,
   markIdempotencyFailed,
 } from "@/lib/idempotency";
+import { cache } from "@/lib/cache";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -115,9 +116,11 @@ export async function POST(req: NextRequest) {
       json = { raw: text };
     }
 
-    // Mark idempotency result
+    // Mark idempotency result + invalidate cache
     if (n8nRes.ok && json.success !== false) {
       await markIdempotencySuccess(requestId, "repair_status", json);
+      // Invalidate reparaciones cache
+      cache.invalidatePattern("reparaciones:");
     } else {
       await markIdempotencyFailed(requestId, "repair_status", json);
     }
