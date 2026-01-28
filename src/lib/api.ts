@@ -181,6 +181,7 @@ export async function cambiarEstadoReparacion(
       },
       credentials: "include",
       body: JSON.stringify({
+        request_id: generateRequestId(), // Idempotency key
         item_id: reparacion.id,
         nuevo_estado: nuevoEstado,
         tecnico_nombre: tecnicoNombre,

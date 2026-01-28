@@ -1,11 +1,16 @@
 // POST /api/n8n/tech-cambiar-estado
 // Changes repair status in Monday
-// Validates: session + CSRF + ownership in Monday (repairs board)
+// Validates: session + CSRF + ownership in Monday (repairs board) + idempotency
 
 import { NextRequest, NextResponse } from "next/server";
 import { getOwnerTextForItem, OWNER_COLUMNS } from "@/lib/monday";
 import { validateSession, validateCsrf, csrfError } from "@/lib/auth-server";
 import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
+import {
+  claimIdempotencyKey,
+  markIdempotencySuccess,
+  markIdempotencyFailed,
+} from "@/lib/idempotency";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -39,11 +44,31 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const itemId = String(body?.item_id ?? "").trim();
+    const requestId = String(body?.request_id ?? "").trim();
 
     if (!itemId) {
       const res = NextResponse.json(
         { success: false, code: "BAD_REQUEST", error: "item_id requerido" },
         { status: 400 }
+      );
+      return addCorsHeaders(res, req);
+    }
+
+    // Idempotency check
+    const idem = await claimIdempotencyKey(
+      requestId,
+      "repair_status",
+      session.tecnico_id
+    );
+
+    if (idem.alreadyProcessed) {
+      if (idem.status === "succeeded" && idem.response) {
+        const res = NextResponse.json(idem.response);
+        return addCorsHeaders(res, req);
+      }
+      const res = NextResponse.json(
+        { success: false, code: "DUPLICATE", error: "Request already processing" },
+        { status: 409 }
       );
       return addCorsHeaders(res, req);
     }
@@ -88,6 +113,13 @@ export async function POST(req: NextRequest) {
       json = text ? JSON.parse(text) : {};
     } catch {
       json = { raw: text };
+    }
+
+    // Mark idempotency result
+    if (n8nRes.ok && json.success !== false) {
+      await markIdempotencySuccess(requestId, "repair_status", json);
+    } else {
+      await markIdempotencyFailed(requestId, "repair_status", json);
     }
 
     const res = NextResponse.json(json, { status: n8nRes.status });
