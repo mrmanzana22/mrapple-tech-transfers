@@ -169,15 +169,30 @@ export async function getReparacionesCliente(tecnico: string): Promise<ApiRespon
 }
 
 /**
- * Cambia el estado de una reparación
+ * Cambia el estado de una reparación y guarda log para métricas
  */
-export async function cambiarEstadoReparacion(itemId: string, estado: string): Promise<ApiResponse<{ item_id: string }>> {
+export async function cambiarEstadoReparacion(
+  reparacion: ReparacionCliente,
+  nuevoEstado: string,
+  tecnicoNombre: string
+): Promise<ApiResponse<{ item_id: string }>> {
   try {
     const url = `${baseUrl}${endpoints.cambiarEstado}`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ item_id: itemId, nuevo_estado: estado }),
+      body: JSON.stringify({
+        item_id: reparacion.id,
+        nuevo_estado: nuevoEstado,
+        tecnico_nombre: tecnicoNombre,
+        item_nombre: reparacion.nombre,
+        tipo_reparacion: reparacion.tipo_reparacion,
+        cliente_nombre: `${reparacion.cliente_nombre} ${reparacion.cliente_apellido}`.trim(),
+        cliente_telefono: reparacion.cliente_telefono,
+        imei: reparacion.imei,
+        valor: reparacion.valor,
+        estado_anterior: reparacion.estado,
+      }),
     });
     const data = await response.json();
     return data.success ? { success: true, data } : { success: false, error: data.error };

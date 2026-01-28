@@ -144,10 +144,14 @@ export default function TecnicoPage() {
     [transfer, handleModalClose]
   );
 
-  const handleReparadoOficina = async (itemId: string) => {
-    setChangingEstado(itemId);
+  const handleReparadoOficina = async (reparacion: ReparacionCliente) => {
+    setChangingEstado(reparacion.id);
     try {
-      const response = await cambiarEstadoReparacion(itemId, "REPARADO OFICINA");
+      const response = await cambiarEstadoReparacion(
+        reparacion,
+        "REPARADO OFICINA",
+        tecnico?.nombre || ""
+      );
       if (response.success) {
         toast.success("Estado actualizado a Reparado oficina");
         loadReparaciones();
@@ -318,7 +322,7 @@ export default function TecnicoPage() {
                     {!rep.estado.toLowerCase().includes("reparado oficina") && (
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => handleReparadoOficina(rep.id)}
+                          onClick={() => handleReparadoOficina(rep)}
                           disabled={changingEstado === rep.id}
                           className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                         >
