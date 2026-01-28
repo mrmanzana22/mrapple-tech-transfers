@@ -86,7 +86,7 @@ export default function JefePage() {
         fetchMetricsWithTrends(selectedMonth),
         fetchDashboardTotals(selectedMonth),
         fetchWeeklyData(selectedMonth),
-        fetchMonthlyTrend(6),
+        fetchMonthlyTrend(),
       ]);
       setMetrics(metricsData);
       setTotals(totalsData);

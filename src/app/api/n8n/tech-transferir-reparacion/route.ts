@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const itemId = String(body?.item_id ?? "").trim();
+    const form = await req.formData();
+    const itemId = String(form.get("item_id") ?? "").trim();
 
     if (!itemId) {
       const res = NextResponse.json(
@@ -69,17 +69,29 @@ export async function POST(req: NextRequest) {
       return addCorsHeaders(res, req);
     }
 
-    // Forward to n8n - normalize sensitive fields from session
-    const forward = {
-      ...body,
-      tecnico_actual: session.tecnico_id,
-      tecnico_nombre: session.nombre,
-    };
+    // Build clean FormData - DON'T trust client's tecnico fields
+    const forward = new FormData();
+
+    // Copy allowed fields (including request_id for idempotency)
+    const allowedFields = ["item_id", "nuevo_tecnico", "comentario", "request_id"];
+    for (const key of allowedFields) {
+      const v = form.get(key);
+      if (v !== null && v !== undefined) forward.set(key, String(v));
+    }
+
+    // Photo if exists
+    const foto = form.get("foto");
+    if (foto instanceof File && foto.size > 0) {
+      forward.set("foto", foto, foto.name);
+    }
+
+    // Override with session data (source of truth)
+    forward.set("tecnico_actual", session.tecnico_id);
+    forward.set("tecnico_nombre", session.nombre);
 
     const n8nRes = await fetch(`${n8nBase}/tech-transferir-reparacion`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(forward),
+      body: forward,
       cache: "no-store",
     });
 

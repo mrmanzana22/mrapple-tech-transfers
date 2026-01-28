@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+// Push notifications helper
+// All Supabase calls go through server-side API routes
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 
@@ -64,19 +65,23 @@ export async function subscribeToPush(tecnicoNombre: string): Promise<boolean> {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
 
-    // Guardar en Supabase
-    const { error } = await supabase
-      .from('mrapple_push_subscriptions')
-      .upsert({
+    // Guardar via API (server-side)
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'mrapple',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
         tecnico_nombre: tecnicoNombre,
         subscription: subscription.toJSON(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'tecnico_nombre'
-      });
+      }),
+    });
 
-    if (error) {
-      console.error('Error saving subscription:', error);
+    const data = await res.json();
+    if (!data.success) {
+      console.error('Error saving subscription:', data.error);
       return false;
     }
 

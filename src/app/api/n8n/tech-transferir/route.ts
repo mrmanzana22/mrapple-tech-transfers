@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
     // Build clean FormData - DON'T trust client's tecnico_actual
     const forward = new FormData();
 
-    // Copy allowed fields
-    const allowedFields = ["item_id", "nuevo_tecnico", "comentario"];
+    // Copy allowed fields (including request_id for idempotency)
+    const allowedFields = ["item_id", "nuevo_tecnico", "comentario", "request_id"];
     for (const key of allowedFields) {
       const v = form.get(key);
       if (v !== null && v !== undefined) forward.set(key, String(v));

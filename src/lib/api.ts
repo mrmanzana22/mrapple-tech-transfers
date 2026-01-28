@@ -16,7 +16,14 @@ export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResp
 
     const response = await fetch(url, {
       method: "GET",
+      credentials: "include",
+      headers: { "X-Requested-With": "mrapple" },
     });
+
+    // Check for auth errors
+    if (response.status === 401) {
+      return { success: false, error: "Sesión expirada" };
+    }
 
     const data = await response.json();
 
@@ -59,6 +66,13 @@ export async function fetchTecnicosActivos(): Promise<string[]> {
 }
 
 /**
+ * Generates a unique request ID for idempotency
+ */
+function generateRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
  * Transfers a phone to another tecnico
  */
 export async function transferPhone(payload: TransferPayload): Promise<ApiResponse<{ item_id: string }>> {
@@ -67,6 +81,7 @@ export async function transferPhone(payload: TransferPayload): Promise<ApiRespon
     formData.append("item_id", payload.item_id);
     formData.append("tecnico_actual", payload.tecnico_actual);
     formData.append("tecnico_actual_nombre", payload.tecnico_actual_nombre);
+    formData.append("request_id", generateRequestId()); // Idempotency key
 
     if (payload.nuevo_tecnico) {
       formData.append("nuevo_tecnico", payload.nuevo_tecnico);
@@ -127,7 +142,16 @@ export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]>
 export async function getReparacionesCliente(tecnico: string): Promise<ApiResponse<ReparacionCliente[]>> {
   try {
     const url = `${baseUrl}${endpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      credentials: "include",
+      headers: { "X-Requested-With": "mrapple" },
+    });
+
+    // Check for auth errors
+    if (response.status === 401) {
+      return { success: false, error: "Sesión expirada" };
+    }
+
     const data = await response.json();
     if (Array.isArray(data)) {
       return { success: true, data };
@@ -193,6 +217,7 @@ export async function transferirReparacion(payload: {
     formData.append("item_id", payload.item_id);
     formData.append("tecnico_actual", payload.tecnico_actual);
     formData.append("tecnico_actual_nombre", payload.tecnico_actual_nombre);
+    formData.append("request_id", generateRequestId()); // Idempotency key
 
     if (payload.nuevo_tecnico) {
       formData.append("nuevo_tecnico", payload.nuevo_tecnico);

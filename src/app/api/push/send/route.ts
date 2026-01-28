@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import webpush from 'web-push';
+// POST /api/push/send
+// Sends push notification to a technician
+// Called by n8n with API secret authentication
+// Uses service role key (server-side)
 
-const supabase = createClient(
-  'https://mhvzpetucfdjkvutmpen.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServer } from '@/lib/supabase-server';
+import webpush from 'web-push';
 
 // Configurar VAPID (lazy initialization)
 let vapidConfigured = false;
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   configureVapid();
+
   try {
     const { tecnico_nombre, title, body, url } = await request.json();
 
@@ -41,6 +42,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const supabase = getSupabaseServer();
 
     // Buscar suscripción del técnico
     const { data, error } = await supabase
@@ -69,11 +72,11 @@ export async function POST(request: NextRequest) {
       console.log('Push sent to:', tecnico_nombre);
       return NextResponse.json({ success: true, tecnico: tecnico_nombre });
     } catch (pushError: unknown) {
-      const error = pushError as { statusCode?: number };
+      const err = pushError as { statusCode?: number };
       console.error('Push error:', pushError);
 
       // Si la suscripción ya no es válida, eliminarla
-      if (error.statusCode === 410) {
+      if (err.statusCode === 410) {
         await supabase
           .from('mrapple_push_subscriptions')
           .delete()
