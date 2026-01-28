@@ -8,8 +8,9 @@ import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
+import { useReparaciones } from "@/hooks/use-reparaciones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { getReparacionesCliente, cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos } from "@/lib/api";
+import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente } from "@/lib/api";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,16 @@ export default function TecnicoPage() {
     autoFetch: !!tecnico,
   });
 
-  // Reparaciones state
-  const [reparaciones, setReparaciones] = useState<ReparacionCliente[]>([]);
-  const [reparacionesLoading, setReparacionesLoading] = useState(false);
+  // Reparaciones state (SWR - cached + instant load)
+  const {
+    reparaciones,
+    isLoading: reparacionesLoading,
+    refresh: refreshReparaciones,
+    mutate: mutateReparaciones,
+  } = useReparaciones({
+    tecnicoNombre: tecnico?.nombre || "",
+    autoFetch: !!tecnico && activeTab === "clientes",
+  });
   const [changingEstado, setChangingEstado] = useState<string | null>(null);
 
   // Modal state - teléfonos
@@ -88,28 +96,7 @@ export default function TecnicoPage() {
     setupPush();
   }, [tecnico?.nombre]);
 
-  // Load reparaciones
-  const loadReparaciones = useCallback(async () => {
-    if (!tecnico?.nombre) return;
-    setReparacionesLoading(true);
-    try {
-      const response = await getReparacionesCliente(tecnico.nombre);
-      if (response.success && response.data) {
-        setReparaciones(response.data);
-      }
-    } catch (error) {
-      console.error("Error loading reparaciones:", error);
-    } finally {
-      setReparacionesLoading(false);
-    }
-  }, [tecnico?.nombre]);
-
-  // Load reparaciones when switching to clientes tab
-  useEffect(() => {
-    if (activeTab === "clientes" && reparaciones.length === 0) {
-      loadReparaciones();
-    }
-  }, [activeTab, reparaciones.length, loadReparaciones]);
+  // Reparaciones auto-fetch when tab is active (handled by useReparaciones hook)
 
   // Load team data
   const loadTeamData = useCallback(async () => {
@@ -201,7 +188,7 @@ export default function TecnicoPage() {
     if (activeTab === "telefonos") {
       await fetchPhones();
     } else if (activeTab === "clientes") {
-      await loadReparaciones();
+      await refreshReparaciones();
     } else if (activeTab === "equipo") {
       if (equipoSubTab === "telefonos") {
         await loadTeamData();
@@ -211,7 +198,7 @@ export default function TecnicoPage() {
     }
     setIsRefreshing(false);
     toast.success("Lista actualizada");
-  }, [fetchPhones, loadReparaciones, loadTeamData, loadTeamClientesData, activeTab, equipoSubTab]);
+  }, [fetchPhones, refreshReparaciones, loadTeamData, loadTeamClientesData, activeTab, equipoSubTab]);
 
   const handleTransferClick = useCallback((phone: Phone) => {
     setSelectedPhone(phone);
@@ -249,7 +236,12 @@ export default function TecnicoPage() {
       );
       if (response.success) {
         toast.success("Estado actualizado a Reparado oficina");
-        loadReparaciones();
+        // Optimistic: update local state, then revalidate in background
+        mutateReparaciones(
+          (current) => current?.filter((r) => r.id !== reparacion.id),
+          { revalidate: false }
+        );
+        setTimeout(() => mutateReparaciones(), 1500);
       } else {
         toast.error(response.error || "Error al actualizar");
       }
@@ -273,6 +265,12 @@ export default function TecnicoPage() {
   const handleTransferReparacionConfirm = useCallback(
     async (payload: TransferPayload) => {
       try {
+        // Optimistic: remove from list immediately
+        mutateReparaciones(
+          (current) => current?.filter((r) => r.id !== payload.item_id),
+          { revalidate: false }
+        );
+
         const response = await transferirReparacion({
           item_id: payload.item_id,
           tecnico_actual: payload.tecnico_actual,
@@ -285,8 +283,11 @@ export default function TecnicoPage() {
         if (response.success) {
           toast.success("Reparación transferida correctamente");
           handleReparacionModalClose();
-          loadReparaciones();
+          // Soft revalidate in background
+          setTimeout(() => mutateReparaciones(), 1500);
         } else {
+          // Rollback on error
+          mutateReparaciones();
           throw new Error(response.error);
         }
       } catch (err) {
@@ -294,7 +295,7 @@ export default function TecnicoPage() {
         throw err;
       }
     },
-    [handleReparacionModalClose, loadReparaciones]
+    [handleReparacionModalClose, mutateReparaciones]
   );
 
   // Get estado badge color

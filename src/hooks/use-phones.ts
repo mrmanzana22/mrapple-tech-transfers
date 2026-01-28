@@ -80,15 +80,17 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
           if (!result.success) {
             throw new Error(result.error || "Error al transferir");
           }
-          // Solo retornamos optimistic - SWR hará el revalidate automático
           return optimisticPhones;
         },
         {
           optimisticData: optimisticPhones,
           rollbackOnError: true,
-          revalidate: true, // SWR hace el fetch automáticamente después
+          revalidate: false, // NO refetch inmediato - el item ya salió visualmente
         }
       );
+
+      // Revalidate suave en background (después de 1.5s)
+      setTimeout(() => mutate(), 1500);
     },
     [phones, mutate]
   );
