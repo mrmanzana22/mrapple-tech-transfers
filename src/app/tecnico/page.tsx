@@ -9,19 +9,26 @@ import { TransferModal } from "@/components/transfer-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { getReparacionesCliente, cambiarEstadoReparacion, transferirReparacion } from "@/lib/api";
+import { getReparacionesCliente, cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones } from "@/lib/api";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PhoneCard } from "@/components/phone-card";
+import { ChevronDown, UserCircle } from "lucide-react";
 
 export default function TecnicoPage() {
   const router = useRouter();
   const { isAuthenticated, tecnico, loading: authLoading, logout } = useAuth();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes">("telefonos");
+  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes" | "equipo">("telefonos");
+
+  // Team state (Equipo tab)
+  const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
+  const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
+  const [teamLoading, setTeamLoading] = useState(false);
 
   // Phone state
   const {
@@ -101,6 +108,43 @@ export default function TecnicoPage() {
     }
   }, [activeTab, reparaciones.length, loadReparaciones]);
 
+  // Load team data
+  const loadTeamData = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const data = await fetchAllTecnicosWithPhones();
+      setTeamData(data);
+      // Expand first tecnico by default
+      if (data.length > 0) {
+        setExpandedTecnicos(new Set([data[0].nombre]));
+      }
+    } catch (error) {
+      console.error("Error loading team data:", error);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
+
+  // Load team data when switching to equipo tab
+  useEffect(() => {
+    if (activeTab === "equipo" && teamData.length === 0) {
+      loadTeamData();
+    }
+  }, [activeTab, teamData.length, loadTeamData]);
+
+  // Toggle tecnico expansion
+  const toggleTecnico = useCallback((nombre: string) => {
+    setExpandedTecnicos((prev) => {
+      const next = new Set(prev);
+      if (next.has(nombre)) {
+        next.delete(nombre);
+      } else {
+        next.add(nombre);
+      }
+      return next;
+    });
+  }, []);
+
   // Handlers
   const handleLogout = useCallback(() => {
     logout();
@@ -111,12 +155,14 @@ export default function TecnicoPage() {
     setIsRefreshing(true);
     if (activeTab === "telefonos") {
       await fetchPhones();
-    } else {
+    } else if (activeTab === "clientes") {
       await loadReparaciones();
+    } else if (activeTab === "equipo") {
+      await loadTeamData();
     }
     setIsRefreshing(false);
     toast.success("Lista actualizada");
-  }, [fetchPhones, loadReparaciones, activeTab]);
+  }, [fetchPhones, loadReparaciones, loadTeamData, activeTab]);
 
   const handleTransferClick = useCallback((phone: Phone) => {
     setSelectedPhone(phone);
@@ -255,6 +301,14 @@ export default function TecnicoPage() {
           >
             Clientes
           </button>
+          <button
+            onClick={() => setActiveTab("equipo")}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "equipo" ? "bg-zinc-800 text-white" : "text-zinc-400"
+            }`}
+          >
+            Equipo
+          </button>
         </div>
       </div>
 
@@ -265,7 +319,7 @@ export default function TecnicoPage() {
             onTransfer={handleTransferClick}
             isLoading={phonesLoading}
           />
-        ) : (
+        ) : activeTab === "clientes" ? (
           /* Clientes tab content */
           <div className="space-y-4">
             {reparacionesLoading ? (
@@ -345,6 +399,69 @@ export default function TecnicoPage() {
                       </div>
                     )}
                   </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        ) : (
+          /* Equipo tab content */
+          <div className="space-y-4">
+            {teamLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="bg-zinc-900 border-zinc-800">
+                    <CardContent className="p-4">
+                      <Skeleton className="h-6 w-48 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : teamData.length === 0 ? (
+              <div className="text-center py-12 text-zinc-500">
+                No hay técnicos disponibles
+              </div>
+            ) : (
+              teamData.map((tec) => (
+                <Card key={tec.nombre} className="bg-zinc-900 border-zinc-800 overflow-hidden">
+                  <button
+                    onClick={() => toggleTecnico(tec.nombre)}
+                    className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <UserCircle className="w-8 h-8 text-zinc-500" />
+                      <div className="text-left">
+                        <h3 className="font-semibold text-white">{tec.nombre}</h3>
+                        <p className="text-sm text-zinc-400">
+                          {tec.phones.length} teléfono{tec.phones.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 text-zinc-400 transition-transform ${
+                        expandedTecnicos.has(tec.nombre) ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {expandedTecnicos.has(tec.nombre) && (
+                    <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
+                      {tec.phones.length === 0 ? (
+                        <p className="text-zinc-500 text-sm py-4 text-center">
+                          Sin teléfonos asignados
+                        </p>
+                      ) : (
+                        <div className="grid gap-3 mt-4">
+                          {tec.phones.map((phone) => (
+                            <PhoneCard
+                              key={phone.id}
+                              phone={phone}
+                              showTransferButton={false}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  )}
                 </Card>
               ))
             )}
