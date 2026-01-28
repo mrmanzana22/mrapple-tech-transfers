@@ -82,6 +82,8 @@ export async function transferPhone(payload: TransferPayload): Promise<ApiRespon
 
     const response = await fetch(`${baseUrl}${endpoints.transfer}`, {
       method: "POST",
+      headers: { "X-Requested-With": "mrapple" },
+      credentials: "include",
       body: formData,
     });
 
@@ -149,7 +151,11 @@ export async function cambiarEstadoReparacion(
     const url = `${baseUrl}${endpoints.cambiarEstado}`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "mrapple",
+      },
+      credentials: "include",
       body: JSON.stringify({
         item_id: reparacion.id,
         nuevo_estado: nuevoEstado,
@@ -200,6 +206,8 @@ export async function transferirReparacion(payload: {
 
     const response = await fetch(`${baseUrl}${endpoints.transferirReparacion}`, {
       method: "POST",
+      headers: { "X-Requested-With": "mrapple" },
+      credentials: "include",
       body: formData,
     });
 

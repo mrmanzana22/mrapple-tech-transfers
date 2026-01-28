@@ -12,6 +12,7 @@ export interface TecnicoSession {
   nombre: string;
   rol: string;
   puede_ver_equipo: boolean;
+  monday_status_value: string;
 }
 
 // ============================================
@@ -67,6 +68,7 @@ export async function validateSession(
       nombre: row.nombre,
       rol: row.rol,
       puede_ver_equipo: row.puede_ver_equipo,
+      monday_status_value: row.monday_status_value || row.nombre, // fallback to nombre
     };
   } catch {
     return null;
