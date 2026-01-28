@@ -8,6 +8,9 @@ export const config = {
       login: "/tech-login",
       getPhones: "/tech-telefonos",
       transfer: "/tech-transferir",
+      reparaciones: "/tech-reparaciones",
+      cambiarEstado: "/tech-cambiar-estado",
+      transferirReparacion: "/tech-transferir-reparacion",
     },
   },
 

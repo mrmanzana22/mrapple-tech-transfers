@@ -1,7 +1,7 @@
 // API calls to n8n webhooks and Supabase
 
 import { config } from "./config";
-import type { Tecnico, Phone, TransferPayload, ApiResponse } from "@/types";
+import type { Tecnico, Phone, TransferPayload, ApiResponse, ReparacionCliente } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
 const SUPABASE_URL = config.supabase.url;
@@ -125,6 +125,109 @@ export async function transferPhone(payload: TransferPayload): Promise<ApiRespon
     return { success: false, error: data.error || "Error al transferir" };
   } catch (error) {
     console.error("Transfer error:", error);
+    return { success: false, error: "Error de conexión" };
+  }
+}
+
+export interface TecnicoWithPhones {
+  nombre: string;
+  phones: Phone[];
+  error?: string;
+}
+
+export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]> {
+  const tecnicos = await fetchTecnicosActivos();
+  const results = await Promise.all(
+    tecnicos.map(async (nombre) => {
+      const response = await getPhonesByTecnico(nombre);
+      return {
+        nombre,
+        phones: response.success ? (response.data ?? []) : [],
+        error: response.success ? undefined : response.error,
+      };
+    })
+  );
+  return results.sort((a, b) => b.phones.length - a.phones.length);
+}
+
+/**
+ * Gets reparaciones de clientes asignadas a un tecnico
+ */
+export async function getReparacionesCliente(tecnico: string): Promise<ApiResponse<ReparacionCliente[]>> {
+  try {
+    const url = `${baseUrl}${endpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return { success: true, data };
+    }
+    return { success: false, error: data.error || "Error al obtener reparaciones" };
+  } catch (error) {
+    console.error("Get reparaciones error:", error);
+    return { success: false, error: "Error de conexión" };
+  }
+}
+
+/**
+ * Cambia el estado de una reparación
+ */
+export async function cambiarEstadoReparacion(itemId: string, estado: string): Promise<ApiResponse<{ item_id: string }>> {
+  try {
+    const url = `${baseUrl}${endpoints.cambiarEstado}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: itemId, nuevo_estado: estado }),
+    });
+    const data = await response.json();
+    return data.success ? { success: true, data } : { success: false, error: data.error };
+  } catch (error) {
+    console.error("Cambiar estado error:", error);
+    return { success: false, error: "Error de conexión" };
+  }
+}
+
+/**
+ * Transfiere una reparación de cliente a otro técnico
+ */
+export async function transferirReparacion(payload: {
+  item_id: string;
+  tecnico_actual: string;
+  tecnico_actual_nombre: string;
+  nuevo_tecnico?: string;
+  comentario?: string;
+  foto?: File | null;
+}): Promise<ApiResponse<{ item_id: string }>> {
+  try {
+    const formData = new FormData();
+    formData.append("item_id", payload.item_id);
+    formData.append("tecnico_actual", payload.tecnico_actual);
+    formData.append("tecnico_actual_nombre", payload.tecnico_actual_nombre);
+
+    if (payload.nuevo_tecnico) {
+      formData.append("nuevo_tecnico", payload.nuevo_tecnico);
+    }
+    if (payload.comentario) {
+      formData.append("comentario", payload.comentario);
+    }
+    if (payload.foto) {
+      formData.append("foto", payload.foto);
+    }
+
+    const response = await fetch(`${baseUrl}${endpoints.transferirReparacion}`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      return { success: true, data: { item_id: data.item_id } };
+    }
+
+    return { success: false, error: data.error || "Error al transferir reparación" };
+  } catch (error) {
+    console.error("Transfer reparacion error:", error);
     return { success: false, error: "Error de conexión" };
   }
 }

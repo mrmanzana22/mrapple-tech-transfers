@@ -27,8 +27,9 @@ import type { Phone } from "@/types";
 
 interface PhoneCardProps {
   phone: Phone;
-  onTransfer: (phone: Phone) => void;
+  onTransfer?: (phone: Phone) => void;
   index?: number;
+  showTransferButton?: boolean;
 }
 
 // ============================================
@@ -93,7 +94,7 @@ const getStaggerDelay = (index: number): string => {
 // COMPONENT
 // ============================================
 
-function PhoneCardComponent({ phone, onTransfer, index = 0 }: PhoneCardProps) {
+function PhoneCardComponent({ phone, onTransfer, index = 0, showTransferButton = true }: PhoneCardProps) {
   const estadoConfig = getEstadoConfig(phone.estado);
   const gradoConfig = getGradoConfig(phone.grado);
 
@@ -194,17 +195,19 @@ function PhoneCardComponent({ phone, onTransfer, index = 0 }: PhoneCardProps) {
           </div>
         </CardContent>
 
-        <CardFooter className="pt-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onTransfer(phone)}
-            className="w-full border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
-          >
-            <ArrowRightLeft className="h-4 w-4 mr-2" />
-            Transferir o Adjuntar Evidencia
-          </Button>
-        </CardFooter>
+        {showTransferButton && onTransfer && (
+          <CardFooter className="pt-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onTransfer(phone)}
+              className="w-full border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+            >
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              Transferir o Adjuntar Evidencia
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

@@ -118,3 +118,17 @@ export const PHONE_STATES = {
 } as const;
 
 export type PhoneState = typeof PHONE_STATES[keyof typeof PHONE_STATES];
+
+export interface ReparacionCliente {
+  id: string;
+  nombre: string;
+  cliente_nombre: string;
+  cliente_apellido: string;
+  cliente_telefono: string;
+  tipo_reparacion: string;
+  imei: string;
+  estado: string;
+  asignado_a: string;
+  fecha: string;
+  valor: number;
+}

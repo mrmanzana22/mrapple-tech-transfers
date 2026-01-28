@@ -14,9 +14,13 @@ import {
   UserCircle,
   Percent,
   Activity,
+  ChevronDown,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { BarChart, LineChart, PieChart, TrendIndicator } from "@/components/charts";
+import { fetchAllTecnicosWithPhones, type TecnicoWithPhones, getReparacionesCliente, fetchTecnicosActivos } from "@/lib/api";
+import { PhoneCard } from "@/components/phone-card";
 import {
   fetchMetricsWithTrends,
   fetchDashboardTotals,
@@ -29,9 +33,10 @@ import type {
   DashboardTotals,
   WeeklyData,
   TecnicoHistorial,
+  ReparacionCliente,
 } from "@/types";
 
-type TabType = "overview" | "analytics" | "detalle";
+type TabType = "overview" | "analytics" | "detalle" | "equipo" | "clientes";
 
 export default function JefePage() {
   const router = useRouter();
@@ -53,6 +58,19 @@ export default function JefePage() {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
+  const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
+  const [teamLoading, setTeamLoading] = useState(false);
+
+  // Clientes state
+  const [clientesData, setClientesData] = useState<{ tecnico: string; reparaciones: ReparacionCliente[] }[]>([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  const [clientesTotals, setClientesTotals] = useState({
+    total: 0,
+    pendientes: 0,
+    reparados: 0,
+    entregados: 0,
   });
 
   // Redirect if not authenticated or not jefe
@@ -103,6 +121,82 @@ export default function JefePage() {
       loadData();
     }
   }, [isAuthenticated, tecnico, loadData]);
+
+  // Load team data
+  const loadTeamData = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const data = await fetchAllTecnicosWithPhones();
+      setTeamData(data);
+    } catch (error) {
+      console.error("Error loading team data:", error);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
+
+  // Load team data when tab is "equipo"
+  useEffect(() => {
+    if (activeTab === "equipo" && teamData.length === 0) {
+      loadTeamData();
+    }
+  }, [activeTab, teamData.length, loadTeamData]);
+
+  // Load clientes data
+  const loadClientesData = useCallback(async () => {
+    setClientesLoading(true);
+    try {
+      const tecnicos = await fetchTecnicosActivos();
+      const results = await Promise.all(
+        tecnicos.map(async (nombre) => {
+          const response = await getReparacionesCliente(nombre);
+          return {
+            tecnico: nombre,
+            reparaciones: response.success ? (response.data ?? []) : [],
+          };
+        })
+      );
+
+      // Calcular totales
+      let total = 0, pendientes = 0, reparados = 0, entregados = 0;
+      results.forEach(r => {
+        r.reparaciones.forEach(rep => {
+          total++;
+          const estado = rep.estado?.toLowerCase() || "";
+          if (estado.includes("reparado")) reparados++;
+          else if (estado.includes("entregado")) entregados++;
+          else pendientes++;
+        });
+      });
+
+      setClientesData(results.filter(r => r.reparaciones.length > 0));
+      setClientesTotals({ total, pendientes, reparados, entregados });
+    } catch (error) {
+      console.error("Error loading clientes:", error);
+    } finally {
+      setClientesLoading(false);
+    }
+  }, []);
+
+  // Load clientes data when tab is "clientes"
+  useEffect(() => {
+    if (activeTab === "clientes" && clientesData.length === 0) {
+      loadClientesData();
+    }
+  }, [activeTab, clientesData.length, loadClientesData]);
+
+  // Toggle expanded tecnico
+  const toggleTecnico = useCallback((nombre: string) => {
+    setExpandedTecnicos((prev) => {
+      const next = new Set(prev);
+      if (next.has(nombre)) {
+        next.delete(nombre);
+      } else {
+        next.add(nombre);
+      }
+      return next;
+    });
+  }, []);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -196,6 +290,8 @@ export default function JefePage() {
             { id: "overview" as const, label: "Overview", icon: TrendingUp },
             { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
             { id: "detalle" as const, label: "Detalle", icon: UserCircle },
+            { id: "equipo" as const, label: "Equipo", icon: Users },
+            { id: "clientes" as const, label: "Clientes", icon: Wrench },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -579,6 +675,187 @@ export default function JefePage() {
                       </div>
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Equipo Tab */}
+            {activeTab === "equipo" && (
+              <div className="space-y-4">
+                {teamLoading ? (
+                  <div className="p-12 flex justify-center">
+                    <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : teamData.length === 0 ? (
+                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center text-zinc-400">
+                    No hay técnicos activos
+                  </div>
+                ) : (
+                  teamData.map((tecnicoData) => (
+                    <div
+                      key={tecnicoData.nombre}
+                      className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden"
+                    >
+                      {/* Header - Clickable */}
+                      <button
+                        onClick={() => toggleTecnico(tecnicoData.nombre)}
+                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <UserCircle className="w-5 h-5 text-blue-400" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-white">
+                              {tecnicoData.nombre}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                              {tecnicoData.phones.length} teléfono
+                              {tecnicoData.phones.length !== 1 ? "s" : ""} asignado
+                              {tecnicoData.phones.length !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-bold text-white">
+                            {tecnicoData.phones.length}
+                          </span>
+                          <ChevronDown
+                            className={`w-5 h-5 text-zinc-400 transition-transform ${
+                              expandedTecnicos.has(tecnicoData.nombre)
+                                ? "rotate-180"
+                                : ""
+                            }`}
+                          />
+                        </div>
+                      </button>
+
+                      {/* Expanded Content */}
+                      {expandedTecnicos.has(tecnicoData.nombre) && (
+                        <div className="border-t border-zinc-800 p-4">
+                          {tecnicoData.error ? (
+                            <p className="text-red-400 text-sm">
+                              Error: {tecnicoData.error}
+                            </p>
+                          ) : tecnicoData.phones.length === 0 ? (
+                            <p className="text-zinc-400 text-sm text-center py-4">
+                              Sin teléfonos asignados
+                            </p>
+                          ) : (
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {tecnicoData.phones.map((phone) => (
+                                <PhoneCard
+                                  key={phone.id}
+                                  phone={phone}
+                                  showTransferButton={false}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Clientes Tab */}
+            {activeTab === "clientes" && (
+              <div className="space-y-6">
+                {/* KPIs */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Wrench className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs text-zinc-400">Total</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{clientesTotals.total}</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                      <span className="text-xs text-zinc-400">Pendientes</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{clientesTotals.pendientes}</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full bg-green-400" />
+                      <span className="text-xs text-zinc-400">Reparados</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{clientesTotals.reparados}</p>
+                  </div>
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                      <span className="text-xs text-zinc-400">Entregados</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{clientesTotals.entregados}</p>
+                  </div>
+                </div>
+
+                {/* Header con refresh */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">Reparaciones por Técnico</h2>
+                  <button
+                    onClick={loadClientesData}
+                    disabled={clientesLoading}
+                    className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${clientesLoading ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+
+                {/* Lista por técnico */}
+                {clientesLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 animate-pulse">
+                        <div className="h-6 w-32 bg-zinc-800 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : clientesData.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400">
+                    No hay reparaciones de clientes este mes
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {clientesData.map((item) => (
+                      <div key={item.tecnico} className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+                        <div className="p-4 border-b border-zinc-800">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-white">{item.tecnico}</p>
+                            <span className="text-sm text-zinc-400">{item.reparaciones.length} reparaciones</span>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-zinc-800">
+                          {item.reparaciones.map((rep) => (
+                            <div key={rep.id} className="p-4 flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-white">
+                                  {rep.cliente_nombre} {rep.cliente_apellido}
+                                </p>
+                                <p className="text-xs text-zinc-400">
+                                  {rep.tipo_reparacion} • {rep.imei?.slice(-8) || "Sin IMEI"}
+                                </p>
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                rep.estado?.toLowerCase().includes("reparado")
+                                  ? "bg-green-500/20 text-green-400"
+                                  : rep.estado?.toLowerCase().includes("entregado")
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }`}>
+                                {rep.estado || "Pendiente"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
