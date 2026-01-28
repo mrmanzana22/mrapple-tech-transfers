@@ -147,7 +147,7 @@ export default function TecnicoPage() {
   const handleReparadoOficina = async (itemId: string) => {
     setChangingEstado(itemId);
     try {
-      const response = await cambiarEstadoReparacion(itemId, "Reparado oficina");
+      const response = await cambiarEstadoReparacion(itemId, "REPARADO OFICINA");
       if (response.success) {
         toast.success("Estado actualizado a Reparado oficina");
         loadReparaciones();
