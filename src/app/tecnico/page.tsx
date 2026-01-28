@@ -350,14 +350,16 @@ export default function TecnicoPage() {
           >
             Clientes
           </button>
-          <button
-            onClick={() => setActiveTab("equipo")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "equipo" ? "bg-zinc-800 text-white" : "text-zinc-400"
-            }`}
-          >
-            Equipo
-          </button>
+          {tecnico?.puede_ver_equipo && (
+            <button
+              onClick={() => setActiveTab("equipo")}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "equipo" ? "bg-zinc-800 text-white" : "text-zinc-400"
+              }`}
+            >
+              Equipo
+            </button>
+          )}
         </div>
       </div>
 
@@ -453,7 +455,7 @@ export default function TecnicoPage() {
               ))
             )}
           </div>
-        ) : (
+        ) : tecnico?.puede_ver_equipo ? (
           /* Equipo tab content */
           <div className="space-y-4">
             {/* Sub-tabs */}
@@ -609,7 +611,7 @@ export default function TecnicoPage() {
               </>
             )}
           </div>
-        )}
+        ) : null}
       </main>
 
       <TransferModal

@@ -7,6 +7,7 @@ export interface Tecnico {
   monday_status_value: string;
   activo: boolean;
   rol: 'tecnico' | 'jefe';
+  puede_ver_equipo?: boolean;
 }
 
 export interface TecnicoMetrics {
