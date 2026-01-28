@@ -1,10 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { loginWithPin } from "@/lib/api";
 import type { Tecnico, AuthState } from "@/types";
 
-const STORAGE_KEY = "mrapple_auth";
+// API helper with CSRF header
+async function authFetch(url: string, options: RequestInit = {}) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'mrapple',
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include', // Important: send cookies
+  });
+}
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
@@ -15,45 +27,79 @@ export function useAuth() {
 
   // Check for existing session on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    const checkSession = async () => {
       try {
-        const tecnico = JSON.parse(stored) as Tecnico;
+        const response = await fetch('/api/auth/verificar', {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.success && data.tecnico) {
+          setState({
+            isAuthenticated: true,
+            tecnico: data.tecnico as Tecnico,
+            loading: false,
+          });
+        } else {
+          setState({
+            isAuthenticated: false,
+            tecnico: null,
+            loading: false,
+          });
+        }
+      } catch {
         setState({
-          isAuthenticated: true,
-          tecnico,
+          isAuthenticated: false,
+          tecnico: null,
           loading: false,
         });
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-        setState((prev) => ({ ...prev, loading: false }));
       }
-    } else {
-      setState((prev) => ({ ...prev, loading: false }));
-    }
+    };
+
+    checkSession();
   }, []);
 
-  const login = useCallback(async (pin: string): Promise<{ success: boolean; error?: string; rol?: string }> => {
+  const login = useCallback(async (pin: string): Promise<{ success: boolean; error?: string; rol?: string; blocked?: boolean }> => {
     setState((prev) => ({ ...prev, loading: true }));
 
-    const result = await loginWithPin(pin);
-
-    if (result.success && result.data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(result.data));
-      setState({
-        isAuthenticated: true,
-        tecnico: result.data,
-        loading: false,
+    try {
+      const response = await authFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ pin }),
       });
-      return { success: true, rol: result.data.rol };
-    }
 
-    setState((prev) => ({ ...prev, loading: false }));
-    return { success: false, error: result.error };
+      const data = await response.json();
+
+      if (data.success && data.tecnico) {
+        setState({
+          isAuthenticated: true,
+          tecnico: data.tecnico as Tecnico,
+          loading: false,
+        });
+        return { success: true, rol: data.tecnico.rol };
+      }
+
+      setState((prev) => ({ ...prev, loading: false }));
+      return {
+        success: false,
+        error: data.error || 'Error de autenticación',
+        blocked: data.blocked || false,
+      };
+    } catch {
+      setState((prev) => ({ ...prev, loading: false }));
+      return { success: false, error: 'Error de conexión' };
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+  const logout = useCallback(async () => {
+    try {
+      await authFetch('/api/auth/logout', {
+        method: 'POST',
+      });
+    } catch {
+      // Ignore errors, clear state anyway
+    }
+
     setState({
       isAuthenticated: false,
       tecnico: null,
