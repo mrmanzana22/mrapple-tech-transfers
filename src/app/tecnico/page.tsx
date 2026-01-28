@@ -397,6 +397,7 @@ export default function TecnicoPage() {
                           {rep.cliente_nombre} {rep.cliente_apellido}
                         </h3>
                         <p className="text-sm text-zinc-400">{rep.cliente_telefono}</p>
+                        <p className="text-sm text-zinc-300 mt-1">{rep.nombre}</p>
                       </div>
                       {getEstadoBadge(rep.estado)}
                     </div>
@@ -589,7 +590,10 @@ export default function TecnicoPage() {
                                   <p className="text-sm text-white">
                                     {rep.cliente_nombre} {rep.cliente_apellido}
                                   </p>
-                                  <p className="text-xs text-zinc-400">
+                                  <p className="text-xs text-zinc-300">
+                                    {rep.nombre}
+                                  </p>
+                                  <p className="text-xs text-zinc-500">
                                     {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
                                   </p>
                                 </div>
