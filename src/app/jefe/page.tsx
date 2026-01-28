@@ -14,13 +14,11 @@ import {
   UserCircle,
   Percent,
   Activity,
-  ChevronDown,
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { BarChart, LineChart, PieChart, TrendIndicator } from "@/components/charts";
-import { fetchAllTecnicosWithPhones, type TecnicoWithPhones, getReparacionesCliente, fetchTecnicosActivos } from "@/lib/api";
-import { PhoneCard } from "@/components/phone-card";
+import { getReparacionesCliente, fetchTecnicosActivos } from "@/lib/api";
 import {
   fetchMetricsWithTrends,
   fetchDashboardTotals,
@@ -36,7 +34,7 @@ import type {
   ReparacionCliente,
 } from "@/types";
 
-type TabType = "overview" | "analytics" | "detalle" | "equipo" | "clientes";
+type TabType = "overview" | "analytics" | "detalle" | "clientes";
 
 export default function JefePage() {
   const router = useRouter();
@@ -59,9 +57,6 @@ export default function JefePage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
-  const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
-  const [teamLoading, setTeamLoading] = useState(false);
 
   // Clientes state
   const [clientesData, setClientesData] = useState<{ tecnico: string; reparaciones: ReparacionCliente[] }[]>([]);
@@ -122,26 +117,6 @@ export default function JefePage() {
     }
   }, [isAuthenticated, tecnico, loadData]);
 
-  // Load team data
-  const loadTeamData = useCallback(async () => {
-    setTeamLoading(true);
-    try {
-      const data = await fetchAllTecnicosWithPhones();
-      setTeamData(data);
-    } catch (error) {
-      console.error("Error loading team data:", error);
-    } finally {
-      setTeamLoading(false);
-    }
-  }, []);
-
-  // Load team data when tab is "equipo"
-  useEffect(() => {
-    if (activeTab === "equipo" && teamData.length === 0) {
-      loadTeamData();
-    }
-  }, [activeTab, teamData.length, loadTeamData]);
-
   // Load clientes data
   const loadClientesData = useCallback(async () => {
     setClientesLoading(true);
@@ -184,19 +159,6 @@ export default function JefePage() {
       loadClientesData();
     }
   }, [activeTab, clientesData.length, loadClientesData]);
-
-  // Toggle expanded tecnico
-  const toggleTecnico = useCallback((nombre: string) => {
-    setExpandedTecnicos((prev) => {
-      const next = new Set(prev);
-      if (next.has(nombre)) {
-        next.delete(nombre);
-      } else {
-        next.add(nombre);
-      }
-      return next;
-    });
-  }, []);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -290,7 +252,6 @@ export default function JefePage() {
             { id: "overview" as const, label: "Overview", icon: TrendingUp },
             { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
             { id: "detalle" as const, label: "Detalle", icon: UserCircle },
-            { id: "equipo" as const, label: "Equipo", icon: Users },
             { id: "clientes" as const, label: "Clientes", icon: Wrench },
           ].map((tab) => (
             <button
@@ -675,87 +636,6 @@ export default function JefePage() {
                       </div>
                     </div>
                   </>
-                )}
-              </div>
-            )}
-
-            {/* Equipo Tab */}
-            {activeTab === "equipo" && (
-              <div className="space-y-4">
-                {teamLoading ? (
-                  <div className="p-12 flex justify-center">
-                    <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : teamData.length === 0 ? (
-                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center text-zinc-400">
-                    No hay técnicos activos
-                  </div>
-                ) : (
-                  teamData.map((tecnicoData) => (
-                    <div
-                      key={tecnicoData.nombre}
-                      className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden"
-                    >
-                      {/* Header - Clickable */}
-                      <button
-                        onClick={() => toggleTecnico(tecnicoData.nombre)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <UserCircle className="w-5 h-5 text-blue-400" />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-medium text-white">
-                              {tecnicoData.nombre}
-                            </p>
-                            <p className="text-xs text-zinc-400">
-                              {tecnicoData.phones.length} teléfono
-                              {tecnicoData.phones.length !== 1 ? "s" : ""} asignado
-                              {tecnicoData.phones.length !== 1 ? "s" : ""}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl font-bold text-white">
-                            {tecnicoData.phones.length}
-                          </span>
-                          <ChevronDown
-                            className={`w-5 h-5 text-zinc-400 transition-transform ${
-                              expandedTecnicos.has(tecnicoData.nombre)
-                                ? "rotate-180"
-                                : ""
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      {/* Expanded Content */}
-                      {expandedTecnicos.has(tecnicoData.nombre) && (
-                        <div className="border-t border-zinc-800 p-4">
-                          {tecnicoData.error ? (
-                            <p className="text-red-400 text-sm">
-                              Error: {tecnicoData.error}
-                            </p>
-                          ) : tecnicoData.phones.length === 0 ? (
-                            <p className="text-zinc-400 text-sm text-center py-4">
-                              Sin teléfonos asignados
-                            </p>
-                          ) : (
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                              {tecnicoData.phones.map((phone) => (
-                                <PhoneCard
-                                  key={phone.id}
-                                  phone={phone}
-                                  showTransferButton={false}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))
                 )}
               </div>
             )}

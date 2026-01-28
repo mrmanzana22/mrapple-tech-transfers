@@ -9,7 +9,7 @@ import { TransferModal } from "@/components/transfer-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { getReparacionesCliente, cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones } from "@/lib/api";
+import { getReparacionesCliente, cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos } from "@/lib/api";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,9 @@ export default function TecnicoPage() {
   const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
   const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
   const [teamLoading, setTeamLoading] = useState(false);
+  const [equipoSubTab, setEquipoSubTab] = useState<"telefonos" | "clientes">("telefonos");
+  const [teamClientesData, setTeamClientesData] = useState<{ tecnico: string; reparaciones: ReparacionCliente[] }[]>([]);
+  const [teamClientesLoading, setTeamClientesLoading] = useState(false);
 
   // Phone state
   const {
@@ -145,6 +148,48 @@ export default function TecnicoPage() {
     });
   }, []);
 
+  // Load team clientes data
+  const loadTeamClientesData = useCallback(async () => {
+    setTeamClientesLoading(true);
+    try {
+      const tecnicos = await fetchTecnicosActivos();
+      const results = await Promise.all(
+        tecnicos.map(async (nombre) => {
+          const response = await getReparacionesCliente(nombre);
+          return {
+            tecnico: nombre,
+            reparaciones: response.success ? (response.data ?? []) : [],
+          };
+        })
+      );
+      // Sort by count and filter empty
+      setTeamClientesData(
+        results
+          .filter((r) => r.reparaciones.length > 0)
+          .sort((a, b) => b.reparaciones.length - a.reparaciones.length)
+      );
+      // Expand first tecnico by default
+      if (results.length > 0 && results[0].reparaciones.length > 0) {
+        setExpandedTecnicos((prev) => {
+          const next = new Set(prev);
+          next.add(results[0].tecnico);
+          return next;
+        });
+      }
+    } catch (error) {
+      console.error("Error loading team clientes:", error);
+    } finally {
+      setTeamClientesLoading(false);
+    }
+  }, []);
+
+  // Load team clientes when switching to equipo/clientes sub-tab
+  useEffect(() => {
+    if (activeTab === "equipo" && equipoSubTab === "clientes" && teamClientesData.length === 0) {
+      loadTeamClientesData();
+    }
+  }, [activeTab, equipoSubTab, teamClientesData.length, loadTeamClientesData]);
+
   // Handlers
   const handleLogout = useCallback(() => {
     logout();
@@ -158,11 +203,15 @@ export default function TecnicoPage() {
     } else if (activeTab === "clientes") {
       await loadReparaciones();
     } else if (activeTab === "equipo") {
-      await loadTeamData();
+      if (equipoSubTab === "telefonos") {
+        await loadTeamData();
+      } else {
+        await loadTeamClientesData();
+      }
     }
     setIsRefreshing(false);
     toast.success("Lista actualizada");
-  }, [fetchPhones, loadReparaciones, loadTeamData, activeTab]);
+  }, [fetchPhones, loadReparaciones, loadTeamData, loadTeamClientesData, activeTab, equipoSubTab]);
 
   const handleTransferClick = useCallback((phone: Phone) => {
     setSelectedPhone(phone);
@@ -406,64 +455,154 @@ export default function TecnicoPage() {
         ) : (
           /* Equipo tab content */
           <div className="space-y-4">
-            {teamLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i} className="bg-zinc-900 border-zinc-800">
-                    <CardContent className="p-4">
-                      <Skeleton className="h-6 w-48 mb-2" />
-                      <Skeleton className="h-4 w-24" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : teamData.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500">
-                No hay técnicos disponibles
-              </div>
-            ) : (
-              teamData.map((tec) => (
-                <Card key={tec.nombre} className="bg-zinc-900 border-zinc-800 overflow-hidden">
-                  <button
-                    onClick={() => toggleTecnico(tec.nombre)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <UserCircle className="w-8 h-8 text-zinc-500" />
-                      <div className="text-left">
-                        <h3 className="font-semibold text-white">{tec.nombre}</h3>
-                        <p className="text-sm text-zinc-400">
-                          {tec.phones.length} teléfono{tec.phones.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronDown
-                      className={`w-5 h-5 text-zinc-400 transition-transform ${
-                        expandedTecnicos.has(tec.nombre) ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {expandedTecnicos.has(tec.nombre) && (
-                    <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
-                      {tec.phones.length === 0 ? (
-                        <p className="text-zinc-500 text-sm py-4 text-center">
-                          Sin teléfonos asignados
-                        </p>
-                      ) : (
-                        <div className="grid gap-3 mt-4">
-                          {tec.phones.map((phone) => (
-                            <PhoneCard
-                              key={phone.id}
-                              phone={phone}
-                              showTransferButton={false}
-                            />
-                          ))}
+            {/* Sub-tabs */}
+            <div className="flex gap-2 bg-zinc-800 p-1 rounded-lg">
+              <button
+                onClick={() => setEquipoSubTab("telefonos")}
+                className={`flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all ${
+                  equipoSubTab === "telefonos" ? "bg-zinc-700 text-white" : "text-zinc-400"
+                }`}
+              >
+                Teléfonos
+              </button>
+              <button
+                onClick={() => setEquipoSubTab("clientes")}
+                className={`flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all ${
+                  equipoSubTab === "clientes" ? "bg-zinc-700 text-white" : "text-zinc-400"
+                }`}
+              >
+                Clientes
+              </button>
+            </div>
+
+            {/* Telefonos sub-tab */}
+            {equipoSubTab === "telefonos" && (
+              <>
+                {teamLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="p-4">
+                          <Skeleton className="h-6 w-48 mb-2" />
+                          <Skeleton className="h-4 w-24" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : teamData.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500">
+                    No hay técnicos disponibles
+                  </div>
+                ) : (
+                  teamData.map((tec) => (
+                    <Card key={tec.nombre} className="bg-zinc-900 border-zinc-800 overflow-hidden">
+                      <button
+                        onClick={() => toggleTecnico(tec.nombre)}
+                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <UserCircle className="w-8 h-8 text-zinc-500" />
+                          <div className="text-left">
+                            <h3 className="font-semibold text-white">{tec.nombre}</h3>
+                            <p className="text-sm text-zinc-400">
+                              {tec.phones.length} teléfono{tec.phones.length !== 1 ? "s" : ""}
+                            </p>
+                          </div>
                         </div>
+                        <ChevronDown
+                          className={`w-5 h-5 text-zinc-400 transition-transform ${
+                            expandedTecnicos.has(tec.nombre) ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                      {expandedTecnicos.has(tec.nombre) && (
+                        <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
+                          {tec.phones.length === 0 ? (
+                            <p className="text-zinc-500 text-sm py-4 text-center">
+                              Sin teléfonos asignados
+                            </p>
+                          ) : (
+                            <div className="grid gap-3 mt-4">
+                              {tec.phones.map((phone) => (
+                                <PhoneCard
+                                  key={phone.id}
+                                  phone={phone}
+                                  showTransferButton={false}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
                       )}
-                    </CardContent>
-                  )}
-                </Card>
-              ))
+                    </Card>
+                  ))
+                )}
+              </>
+            )}
+
+            {/* Clientes sub-tab */}
+            {equipoSubTab === "clientes" && (
+              <>
+                {teamClientesLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="p-4">
+                          <Skeleton className="h-6 w-48 mb-2" />
+                          <Skeleton className="h-4 w-24" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : teamClientesData.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500">
+                    No hay reparaciones de clientes asignadas
+                  </div>
+                ) : (
+                  teamClientesData.map((item) => (
+                    <Card key={item.tecnico} className="bg-zinc-900 border-zinc-800 overflow-hidden">
+                      <button
+                        onClick={() => toggleTecnico(item.tecnico)}
+                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <UserCircle className="w-8 h-8 text-zinc-500" />
+                          <div className="text-left">
+                            <h3 className="font-semibold text-white">{item.tecnico}</h3>
+                            <p className="text-sm text-zinc-400">
+                              {item.reparaciones.length} reparación{item.reparaciones.length !== 1 ? "es" : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronDown
+                          className={`w-5 h-5 text-zinc-400 transition-transform ${
+                            expandedTecnicos.has(item.tecnico) ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                      {expandedTecnicos.has(item.tecnico) && (
+                        <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
+                          <div className="divide-y divide-zinc-800 mt-2">
+                            {item.reparaciones.map((rep) => (
+                              <div key={rep.id} className="py-3 flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-white">
+                                    {rep.cliente_nombre} {rep.cliente_apellido}
+                                  </p>
+                                  <p className="text-xs text-zinc-400">
+                                    {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
+                                  </p>
+                                </div>
+                                {getEstadoBadge(rep.estado)}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))
+                )}
+              </>
             )}
           </div>
         )}
