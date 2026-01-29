@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhoneCard } from "@/components/phone-card";
-import { ChevronDown, UserCircle } from "lucide-react";
+import { ChevronDown, UserCircle, XCircle } from "lucide-react";
 
 export default function TecnicoPage() {
   const router = useRouter();
@@ -252,6 +252,31 @@ export default function TecnicoPage() {
     }
   };
 
+  const handleNoReparado = async (reparacion: ReparacionCliente) => {
+    setChangingEstado(reparacion.id);
+    try {
+      const response = await cambiarEstadoReparacion(
+        reparacion,
+        "no se pudo arreglar",
+        tecnico?.nombre || ""
+      );
+      if (response.success) {
+        toast.success("Equipo marcado como no reparado");
+        mutateReparaciones(
+          (current) => current?.filter((r) => r.id !== reparacion.id),
+          { revalidate: false }
+        );
+        setTimeout(() => mutateReparaciones(), 1500);
+      } else {
+        toast.error(response.error || "Error al actualizar");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setChangingEstado(null);
+    }
+  };
+
   const handleTransferReparacionClick = useCallback((reparacion: ReparacionCliente) => {
     setSelectedReparacion(reparacion);
     setIsReparacionModalOpen(true);
@@ -428,6 +453,21 @@ export default function TecnicoPage() {
 
                     {!rep.estado.toLowerCase().includes("reparado oficina") && (
                       <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleNoReparado(rep)}
+                          disabled={changingEstado === rep.id}
+                          variant="outline"
+                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                        >
+                          {changingEstado === rep.id ? (
+                            <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4 mr-1" />
+                              No Reparado
+                            </>
+                          )}
+                        </Button>
                         <Button
                           onClick={() => handleReparadoOficina(rep)}
                           disabled={changingEstado === rep.id}
