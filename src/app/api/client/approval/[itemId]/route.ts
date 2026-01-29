@@ -83,8 +83,28 @@ export async function POST(
       );
     }
 
-    // Success - TODO: trigger n8n webhook to update Monday and notify tecnico
+    // Success - trigger n8n webhook to update Monday and notify
     const result = data[0];
+
+    // Get repair details for notification
+    const { data: repairDetails } = await supabase
+      .from("mrapple_repair_approvals")
+      .select("cliente_nombre, tipo_reparacion, valor_a_cobrar")
+      .eq("item_id", itemId)
+      .single();
+
+    // Fire and forget - don't wait for n8n response
+    fetch("https://appn8n-n8n.lx6zon.easypanel.host/webhook/repair-approval-notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        item_id: itemId,
+        decision: decision,
+        cliente_nombre: repairDetails?.cliente_nombre || "Cliente",
+        tipo_reparacion: repairDetails?.tipo_reparacion || "Reparación",
+        valor: repairDetails?.valor_a_cobrar || 0,
+      }),
+    }).catch((err) => console.error("n8n webhook error:", err));
 
     return NextResponse.json({
       success: true,
