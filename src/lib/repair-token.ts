@@ -56,6 +56,6 @@ export function validateToken(
  * Build the approval URL for a repair
  */
 export function buildApprovalUrl(itemId: string, token: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mistermanzana.com";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mrapple-tech-transfers.vercel.app";
   return `${baseUrl}/r/${itemId}?t=${token}`;
 }
