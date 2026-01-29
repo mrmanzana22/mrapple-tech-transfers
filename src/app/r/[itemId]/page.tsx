@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Smartphone, Apple } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Smartphone } from "lucide-react";
+import Image from "next/image";
 
 interface RepairData {
   itemId: string;
@@ -120,50 +121,56 @@ export default function RepairApprovalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header con Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl shadow-lg shadow-emerald-200 mb-4">
-            <Apple className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-zinc-800 rounded-3xl shadow-2xl mb-4 p-2">
+            <Image
+              src="/logo.png"
+              alt="Mister Manzana"
+              width={80}
+              height={80}
+              className="object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
             Mister Manzana
           </h1>
-          <p className="text-gray-500 text-sm font-medium">Reparaciones</p>
+          <p className="text-zinc-500 text-sm font-medium">Reparaciones</p>
         </div>
 
         {/* Card Principal */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-white/50">
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           {/* Loading */}
           {state === "loading" && (
             <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-zinc-100 rounded-full mb-4">
+                <Loader2 className="w-8 h-8 text-zinc-800 animate-spin" />
               </div>
-              <p className="text-gray-500 font-medium">Cargando informacion...</p>
+              <p className="text-zinc-500 font-medium">Cargando informacion...</p>
             </div>
           )}
 
           {/* Error */}
           {state === "error" && (
             <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4">
-                <AlertCircle className="w-10 h-10 text-red-500" />
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-zinc-100 rounded-full mb-4">
+                <AlertCircle className="w-10 h-10 text-zinc-800" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
-              <p className="text-gray-500">{error}</p>
+              <h2 className="text-xl font-bold text-zinc-900 mb-2">Oops!</h2>
+              <p className="text-zinc-500">{error}</p>
             </div>
           )}
 
           {/* Expired */}
           {state === "expired" && (
             <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-4">
-                <Clock className="w-10 h-10 text-amber-500" />
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-zinc-100 rounded-full mb-4">
+                <Clock className="w-10 h-10 text-zinc-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Link Expirado</h2>
-              <p className="text-gray-500">
+              <h2 className="text-xl font-bold text-zinc-900 mb-2">Link Expirado</h2>
+              <p className="text-zinc-500">
                 Este enlace ya no es valido. Contacta al local para mas informacion.
               </p>
             </div>
@@ -173,18 +180,18 @@ export default function RepairApprovalPage() {
           {state === "already_decided" && (
             <div className="p-10 text-center">
               <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                finalDecision === "approved" ? "bg-emerald-100" : "bg-red-100"
+                finalDecision === "approved" ? "bg-zinc-900" : "bg-zinc-200"
               }`}>
                 {finalDecision === "approved" ? (
-                  <CheckCircle className="w-10 h-10 text-emerald-500" />
+                  <CheckCircle className="w-10 h-10 text-white" />
                 ) : (
-                  <XCircle className="w-10 h-10 text-red-500" />
+                  <XCircle className="w-10 h-10 text-zinc-600" />
                 )}
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <h2 className="text-xl font-bold text-zinc-900 mb-2">
                 {finalDecision === "approved" ? "Ya Aprobada" : "Ya Rechazada"}
               </h2>
-              <p className="text-gray-500">
+              <p className="text-zinc-500">
                 Esta reparacion ya fue {finalDecision === "approved" ? "aprobada" : "rechazada"}.
               </p>
             </div>
@@ -194,27 +201,27 @@ export default function RepairApprovalPage() {
           {state === "ready" && repair && (
             <>
               {/* Info del equipo */}
-              <div className="p-6 bg-gradient-to-br from-gray-50 to-white">
+              <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 text-emerald-600" />
+                  <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center">
+                    <Smartphone className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Reparacion</p>
-                    <p className="font-semibold text-gray-900">{repair.tipoReparacion}</p>
+                    <p className="text-sm text-zinc-500">Reparacion</p>
+                    <p className="font-semibold text-zinc-900">{repair.tipoReparacion}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-500">Cliente</span>
-                    <span className="font-medium text-gray-900">{repair.clienteNombre}</span>
+                  <div className="flex items-center justify-between py-3 border-b border-zinc-100">
+                    <span className="text-zinc-500">Cliente</span>
+                    <span className="font-medium text-zinc-900">{repair.clienteNombre}</span>
                   </div>
 
                   {repair.serialImei && (
-                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                      <span className="text-gray-500">IMEI/Serial</span>
-                      <span className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                    <div className="flex items-center justify-between py-3 border-b border-zinc-100">
+                      <span className="text-zinc-500">IMEI/Serial</span>
+                      <span className="font-mono text-sm text-zinc-700 bg-zinc-100 px-2 py-1 rounded">
                         {repair.serialImei}
                       </span>
                     </div>
@@ -222,8 +229,8 @@ export default function RepairApprovalPage() {
                 </div>
 
                 {/* Precio destacado */}
-                <div className="mt-6 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl text-center">
-                  <p className="text-emerald-100 text-sm mb-1">Valor a cobrar</p>
+                <div className="mt-6 p-4 bg-zinc-900 rounded-2xl text-center">
+                  <p className="text-zinc-400 text-sm mb-1">Valor a cobrar</p>
                   <p className="text-3xl font-bold text-white">
                     {formatMoney(repair.valorACobrar)}
                   </p>
@@ -231,20 +238,20 @@ export default function RepairApprovalPage() {
               </div>
 
               {/* Botones de decision */}
-              <div className="p-6 border-t border-gray-100">
-                <p className="text-center text-gray-600 mb-5 font-medium">
+              <div className="p-6 border-t border-zinc-100">
+                <p className="text-center text-zinc-600 mb-5 font-medium">
                   ¿Deseas aprobar esta reparacion?
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => handleDecision("rejected")}
-                    className="py-4 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
+                    className="py-4 px-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
                   >
                     No aprobar
                   </button>
                   <button
                     onClick={() => handleDecision("approved")}
-                    className="py-4 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg shadow-emerald-200 active:scale-95"
+                    className="py-4 px-6 bg-zinc-900 hover:bg-black text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg active:scale-95"
                   >
                     Aprobar
                   </button>
@@ -258,18 +265,18 @@ export default function RepairApprovalPage() {
             <div className="p-8">
               <div className="text-center mb-8">
                 <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                  pendingDecision === "approved" ? "bg-emerald-100" : "bg-red-100"
+                  pendingDecision === "approved" ? "bg-zinc-900" : "bg-zinc-200"
                 }`}>
                   {pendingDecision === "approved" ? (
-                    <CheckCircle className="w-10 h-10 text-emerald-500" />
+                    <CheckCircle className="w-10 h-10 text-white" />
                   ) : (
-                    <XCircle className="w-10 h-10 text-red-500" />
+                    <XCircle className="w-10 h-10 text-zinc-600" />
                   )}
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                <h2 className="text-xl font-bold text-zinc-900 mb-2">
                   Confirmar {pendingDecision === "approved" ? "Aprobacion" : "Rechazo"}
                 </h2>
-                <p className="text-gray-500">
+                <p className="text-zinc-500">
                   {pendingDecision === "approved"
                     ? "Se iniciara la reparacion de tu equipo."
                     : "No se realizara la reparacion."}
@@ -278,16 +285,16 @@ export default function RepairApprovalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={cancelConfirm}
-                  className="py-4 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
+                  className="py-4 px-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
                 >
                   Volver
                 </button>
                 <button
                   onClick={confirmDecision}
-                  className={`py-4 px-6 font-semibold rounded-2xl transition-all duration-200 text-white active:scale-95 ${
+                  className={`py-4 px-6 font-semibold rounded-2xl transition-all duration-200 active:scale-95 ${
                     pendingDecision === "approved"
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-200"
-                      : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-lg shadow-red-200"
+                      ? "bg-zinc-900 hover:bg-black text-white shadow-lg"
+                      : "bg-zinc-700 hover:bg-zinc-800 text-white"
                   }`}
                 >
                   Confirmar
@@ -301,19 +308,19 @@ export default function RepairApprovalPage() {
             <div className="p-10 text-center">
               <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 ${
                 finalDecision === "approved"
-                  ? "bg-gradient-to-br from-emerald-400 to-teal-500"
-                  : "bg-gradient-to-br from-red-400 to-rose-500"
+                  ? "bg-zinc-900"
+                  : "bg-zinc-300"
               }`}>
                 {finalDecision === "approved" ? (
                   <CheckCircle className="w-12 h-12 text-white" />
                 ) : (
-                  <XCircle className="w-12 h-12 text-white" />
+                  <XCircle className="w-12 h-12 text-zinc-600" />
                 )}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              <h2 className="text-2xl font-bold text-zinc-900 mb-3">
                 {finalDecision === "approved" ? "Aprobado!" : "Rechazado"}
               </h2>
-              <p className="text-gray-500 leading-relaxed">
+              <p className="text-zinc-500 leading-relaxed">
                 {finalDecision === "approved"
                   ? "Gracias por tu confianza. Te avisaremos cuando tu equipo este listo para recoger."
                   : "Entendido. Si deseas explorar otras opciones, contacta al local."}
@@ -324,10 +331,10 @@ export default function RepairApprovalPage() {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-gray-400 text-xs">
+          <p className="text-zinc-600 text-xs">
             Mister Manzana Reparaciones
           </p>
-          <p className="text-gray-300 text-xs mt-1">
+          <p className="text-zinc-700 text-xs mt-1">
             Servicio tecnico especializado en Apple
           </p>
         </div>
