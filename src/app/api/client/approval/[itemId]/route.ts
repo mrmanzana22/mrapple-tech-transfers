@@ -89,7 +89,7 @@ export async function POST(
     // Get repair details for notification
     const { data: repairDetails } = await supabase
       .from("mrapple_repair_approvals")
-      .select("cliente_nombre, tipo_reparacion, valor_a_cobrar")
+      .select("cliente_nombre, cliente_telefono, tipo_reparacion, valor_a_cobrar")
       .eq("item_id", itemId)
       .single();
 
@@ -101,6 +101,7 @@ export async function POST(
         item_id: itemId,
         decision: decision,
         cliente_nombre: repairDetails?.cliente_nombre || "Cliente",
+        cliente_telefono: repairDetails?.cliente_telefono || "",
         tipo_reparacion: repairDetails?.tipo_reparacion || "Reparación",
         valor: repairDetails?.valor_a_cobrar || 0,
       }),
