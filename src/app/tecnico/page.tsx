@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
-import { ChevronDown, UserCircle, XCircle, Search, X } from "lucide-react";
+import { ChevronDown, UserCircle, XCircle, Search, X, ArrowRightLeft } from "lucide-react";
 
 // Hook para debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -558,43 +558,55 @@ export default function TecnicoPage() {
                     </div>
 
                     {!rep.estado.toLowerCase().includes("reparado oficina") && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleNoReparado(rep)}
-                          disabled={changingEstado === rep.id}
-                          variant="outline"
-                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
-                        >
-                          {changingEstado === rep.id ? (
-                            <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <>
-                              <XCircle className="h-4 w-4 mr-1" />
-                              No Reparado
-                            </>
-                          )}
-                        </Button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Primary action - full width on mobile */}
                         <Button
                           onClick={() => handleReparadoOficina(rep)}
                           disabled={changingEstado === rep.id}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                          className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white order-1 sm:order-2"
                         >
                           {changingEstado === rep.id ? (
                             <span className="flex items-center gap-2">
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Actualizando...
+                              <span className="hidden sm:inline">Actualizando...</span>
                             </span>
                           ) : (
-                            "Reparado Oficina"
+                            <>
+                              <span className="sm:hidden">Reparado</span>
+                              <span className="hidden sm:inline">Reparado Oficina</span>
+                            </>
                           )}
                         </Button>
-                        <Button
-                          onClick={() => handleTransferReparacionClick(rep)}
-                          variant="outline"
-                          className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                        >
-                          Transferir
-                        </Button>
+
+                        {/* Secondary actions - side by side on mobile */}
+                        <div className="flex gap-2 order-2 sm:order-1 sm:contents">
+                          <Button
+                            onClick={() => handleNoReparado(rep)}
+                            disabled={changingEstado === rep.id}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 sm:flex-none text-red-500 border-red-500/30 hover:bg-red-500/10"
+                          >
+                            {changingEstado === rep.id ? (
+                              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <XCircle className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">No Reparado</span>
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => handleTransferReparacionClick(rep)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 sm:flex-none border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                          >
+                            <ArrowRightLeft className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Transferir</span>
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </CardContent>
