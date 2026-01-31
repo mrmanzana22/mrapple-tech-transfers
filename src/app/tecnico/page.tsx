@@ -592,7 +592,8 @@ export default function TecnicoPage() {
                               <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <>
-                                <XCircle className="h-4 w-4 sm:mr-1" />
+                                <XCircle className="h-4 w-4 mr-1" />
+                                <span className="sm:hidden">Falló</span>
                                 <span className="hidden sm:inline">No Reparado</span>
                               </>
                             )}
@@ -603,7 +604,8 @@ export default function TecnicoPage() {
                             size="sm"
                             className="flex-1 sm:flex-none border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                           >
-                            <ArrowRightLeft className="h-4 w-4 sm:mr-1" />
+                            <ArrowRightLeft className="h-4 w-4 mr-1" />
+                            <span className="sm:hidden">Mover</span>
                             <span className="hidden sm:inline">Transferir</span>
                           </Button>
                         </div>
