@@ -176,33 +176,45 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
 
       {/* Floating action bar for batch transfer */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/50">
-            <span className="text-sm text-zinc-300">
-              <span className="font-semibold text-white">{selectedIds.size}</span>
-              {selectedIds.size >= MAX_BATCH_SIZE && (
-                <span className="text-amber-400 ml-1">(máx)</span>
-              )}
-              <span className="hidden sm:inline">{" "}seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
-            </span>
-            <div className="hidden sm:block w-px h-6 bg-zinc-700" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearSelection}
-              className="hidden sm:flex text-zinc-400 hover:text-zinc-300"
-            >
-              Limpiar
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleBatchTransferClick}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <ArrowRightLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Transferir {selectedIds.size}</span>
-              <span className="sm:hidden">Transferir</span>
-            </Button>
+        <div className="fixed bottom-0 left-0 right-0 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 animate-fade-in-up safe-area-bottom">
+          <div className="flex items-center gap-3 px-4 py-4 sm:py-3 sm:rounded-xl bg-zinc-900 border-t sm:border border-zinc-700 shadow-2xl shadow-black/50">
+            {/* Counter */}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-bold text-sm">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm text-zinc-400">
+                {selectedIds.size >= MAX_BATCH_SIZE ? (
+                  <span className="text-amber-400">máximo</span>
+                ) : (
+                  <span className="hidden xs:inline">seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
+                )}
+              </span>
+            </div>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                className="text-zinc-400 hover:text-zinc-300 px-2 sm:px-3"
+              >
+                <X className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Limpiar</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBatchTransferClick}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4"
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                Transferir
+              </Button>
+            </div>
           </div>
         </div>
       )}
