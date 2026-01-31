@@ -176,21 +176,21 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
 
       {/* Floating action bar for batch transfer */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/50">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/50">
             <span className="text-sm text-zinc-300">
               <span className="font-semibold text-white">{selectedIds.size}</span>
               {selectedIds.size >= MAX_BATCH_SIZE && (
                 <span className="text-amber-400 ml-1">(máx)</span>
               )}
-              {" "}seleccionado{selectedIds.size !== 1 ? "s" : ""}
+              <span className="hidden sm:inline">{" "}seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
             </span>
-            <div className="w-px h-6 bg-zinc-700" />
+            <div className="hidden sm:block w-px h-6 bg-zinc-700" />
             <Button
               variant="ghost"
               size="sm"
               onClick={clearSelection}
-              className="text-zinc-400 hover:text-zinc-300"
+              className="hidden sm:flex text-zinc-400 hover:text-zinc-300"
             >
               Limpiar
             </Button>
@@ -199,8 +199,9 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
               onClick={handleBatchTransferClick}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <ArrowRightLeft className="h-4 w-4 mr-2" />
-              Transferir {selectedIds.size}
+              <ArrowRightLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Transferir {selectedIds.size}</span>
+              <span className="sm:hidden">Transferir</span>
             </Button>
           </div>
         </div>
