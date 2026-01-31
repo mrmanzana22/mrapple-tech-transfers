@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
@@ -16,8 +16,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
-import { ChevronDown, UserCircle, XCircle } from "lucide-react";
+import { ChevronDown, UserCircle, XCircle, Search, X } from "lucide-react";
+
+// Hook para debounce
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function TecnicoPage() {
   const router = useRouter();
@@ -60,12 +78,26 @@ export default function TecnicoPage() {
 
   // Modal state - teléfonos
   const [selectedPhone, setSelectedPhone] = useState<Phone | null>(null);
+  const [selectedPhones, setSelectedPhones] = useState<Phone[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal state - reparaciones
   const [selectedReparacion, setSelectedReparacion] = useState<ReparacionCliente | null>(null);
   const [isReparacionModalOpen, setIsReparacionModalOpen] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Filtered phones by IMEI
+  const filteredPhones = useMemo(() => {
+    if (!debouncedSearch.trim()) return phones;
+    const query = debouncedSearch.toLowerCase().trim();
+    return phones.filter((phone) =>
+      phone.imei?.toLowerCase().includes(query)
+    );
+  }, [phones, debouncedSearch]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -202,12 +234,20 @@ export default function TecnicoPage() {
 
   const handleTransferClick = useCallback((phone: Phone) => {
     setSelectedPhone(phone);
+    setSelectedPhones([]);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleBatchTransferClick = useCallback((phones: Phone[]) => {
+    setSelectedPhone(null);
+    setSelectedPhones(phones);
     setIsModalOpen(true);
   }, []);
 
   const handleModalClose = useCallback(() => {
     setIsModalOpen(false);
     setSelectedPhone(null);
+    setSelectedPhones([]);
   }, []);
 
   const handleTransferConfirm = useCallback(
@@ -215,6 +255,41 @@ export default function TecnicoPage() {
       try {
         await transfer(payload);
         toast.success("Transferencia realizada correctamente");
+        handleModalClose();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Error al transferir"
+        );
+        throw err;
+      }
+    },
+    [transfer, handleModalClose]
+  );
+
+  const handleBatchTransferConfirm = useCallback(
+    async (payloads: TransferPayload[]) => {
+      try {
+        // Execute transfers sequentially to avoid rate limits
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const payload of payloads) {
+          try {
+            await transfer(payload);
+            successCount++;
+          } catch {
+            errorCount++;
+          }
+        }
+
+        if (errorCount === 0) {
+          toast.success(`${successCount} transferencias realizadas correctamente`);
+        } else if (successCount > 0) {
+          toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
+        } else {
+          toast.error("Error en todas las transferencias");
+        }
+
         handleModalClose();
       } catch (err) {
         toast.error(
@@ -391,11 +466,42 @@ export default function TecnicoPage() {
 
       <main className="container mx-auto px-4 py-6">
         {activeTab === "telefonos" ? (
-          <PhoneList
-            phones={phones}
-            onTransfer={handleTransferClick}
-            isLoading={phonesLoading}
-          />
+          <div className="space-y-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Input
+                type="text"
+                placeholder="Buscar por IMEI..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 placeholder:text-zinc-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-zinc-800 rounded-full transition-colors"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4 text-zinc-500" />
+                </button>
+              )}
+            </div>
+
+            {/* Results counter when filtering */}
+            {debouncedSearch.trim() && (
+              <p className="text-sm text-zinc-500">
+                {filteredPhones.length} de {phones.length} teléfono{phones.length !== 1 ? "s" : ""}
+              </p>
+            )}
+
+            <PhoneList
+              phones={filteredPhones}
+              onTransfer={handleTransferClick}
+              onBatchTransfer={handleBatchTransferClick}
+              isLoading={phonesLoading}
+            />
+          </div>
         ) : activeTab === "clientes" ? (
           /* Clientes tab content */
           <div className="space-y-4">
@@ -659,7 +765,9 @@ export default function TecnicoPage() {
         isOpen={isModalOpen}
         onClose={handleModalClose}
         onConfirm={handleTransferConfirm}
+        onBatchConfirm={handleBatchTransferConfirm}
         phone={selectedPhone}
+        phones={selectedPhones.length > 0 ? selectedPhones : undefined}
         currentTecnico={tecnico?.nombre || ""}
       />
 

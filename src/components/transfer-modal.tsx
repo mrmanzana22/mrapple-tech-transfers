@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, X, Smartphone, User, ArrowRight, MessageSquare, Clock } from "lucide-react";
+import { Loader2, Upload, X, Smartphone, User, ArrowRight, MessageSquare, Clock, Hash } from "lucide-react";
 import { fetchTecnicosActivos } from "@/lib/api";
 import type { Phone, TransferPayload } from "@/types";
 
@@ -29,7 +29,9 @@ interface TransferModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: TransferPayload) => Promise<void>;
-  phone: Phone | null;
+  onBatchConfirm?: (data: TransferPayload[]) => Promise<void>;
+  phone?: Phone | null; // Legacy single phone support
+  phones?: Phone[];     // Batch support
   currentTecnico: string;
 }
 
@@ -41,9 +43,16 @@ export function TransferModal({
   isOpen,
   onClose,
   onConfirm,
+  onBatchConfirm,
   phone,
+  phones: phonesProp,
   currentTecnico,
 }: TransferModalProps) {
+  // Normalize to array - support both single phone (legacy) and batch
+  const phones = useMemo(() => {
+    return phonesProp ?? (phone ? [phone] : []);
+  }, [phonesProp, phone]);
+  const isBatch = phones.length > 1;
   // Form State
   const [targetTechnician, setTargetTechnician] = useState<string>("");
   const [comment, setComment] = useState<string>("");
@@ -155,20 +164,34 @@ export function TransferModal({
   }, [isLoading, resetForm, onClose]);
 
   const handleSubmit = useCallback(async () => {
-    if (!phone) return;
+    if (phones.length === 0) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      await onConfirm({
-        item_id: phone.id,
-        tecnico_actual: currentTecnico,
-        tecnico_actual_nombre: currentTecnico,
-        nuevo_tecnico: targetTechnician || undefined,
-        comentario: comment || undefined,
-        foto: photo,
-      });
+      if (isBatch && onBatchConfirm) {
+        // Batch transfer
+        const payloads: TransferPayload[] = phones.map((p) => ({
+          item_id: p.id,
+          tecnico_actual: currentTecnico,
+          tecnico_actual_nombre: currentTecnico,
+          nuevo_tecnico: targetTechnician || undefined,
+          comentario: comment || undefined,
+          foto: photo,
+        }));
+        await onBatchConfirm(payloads);
+      } else {
+        // Single transfer (legacy)
+        await onConfirm({
+          item_id: phones[0].id,
+          tecnico_actual: currentTecnico,
+          tecnico_actual_nombre: currentTecnico,
+          nuevo_tecnico: targetTechnician || undefined,
+          comentario: comment || undefined,
+          foto: photo,
+        });
+      }
 
       resetForm();
       onClose();
@@ -181,9 +204,9 @@ export function TransferModal({
     } finally {
       setIsLoading(false);
     }
-  }, [targetTechnician, comment, photo, phone, currentTecnico, onConfirm, resetForm, onClose]);
+  }, [targetTechnician, comment, photo, phones, isBatch, currentTecnico, onConfirm, onBatchConfirm, resetForm, onClose]);
 
-  if (!phone) return null;
+  if (phones.length === 0) return null;
 
   // ==========================================
   // RENDER
@@ -196,44 +219,81 @@ export function TransferModal({
         <DialogHeader className="p-6 pb-4 border-b border-zinc-800">
           <DialogTitle className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
             <ArrowRight className="w-5 h-5 text-blue-500" />
-            Transferir Telefono
+            {isBatch ? `Transferir ${phones.length} Teléfonos` : "Transferir Telefono"}
           </DialogTitle>
         </DialogHeader>
 
         {/* Body */}
         <div className="p-6 space-y-6">
-          {/* Phone Info Card */}
-          <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-blue-900/30 rounded-lg">
-                <Smartphone className="w-6 h-6 text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-zinc-100 truncate">
-                  {phone.nombre}
-                </h3>
-                <p className="text-sm text-zinc-400">
-                  IMEI: ...{phone.imei?.slice(-4)}
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <User className="w-3 h-3 text-zinc-400" />
-                  <span className="text-xs text-zinc-400">
-                    Actual: {currentTecnico}
-                  </span>
+          {/* Phone Info Card - Single */}
+          {!isBatch && phones[0] && (
+            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-blue-900/30 rounded-lg">
+                  <Smartphone className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-zinc-100 truncate">
+                    {phones[0].nombre}
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    IMEI: ...{phones[0].imei?.slice(-4)}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <User className="w-3 h-3 text-zinc-400" />
+                    <span className="text-xs text-zinc-400">
+                      Actual: {currentTecnico}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Previous Comments */}
-          {phone.updates && phone.updates.length > 0 && (
+          {/* Phone List - Batch */}
+          {isBatch && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                <Smartphone className="w-4 h-4" />
+                Teléfonos a transferir ({phones.length})
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/30 p-3">
+                {phones.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-2 rounded-md bg-zinc-800/50 border border-zinc-700/50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Smartphone className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-zinc-200 truncate">{p.nombre}</p>
+                        <p className="text-xs text-zinc-500 flex items-center gap-1">
+                          <Hash className="w-3 h-3" />
+                          ...{p.imei?.slice(-8) || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <User className="w-3 h-3 text-zinc-400" />
+                <span className="text-xs text-zinc-400">
+                  Técnico actual: {currentTecnico}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Previous Comments - Only for single phone */}
+          {!isBatch && phones[0]?.updates && phones[0].updates.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Comentarios Anteriores ({phone.updates.length})
+                Comentarios Anteriores ({phones[0].updates.length})
               </label>
               <div className="max-h-40 overflow-y-auto space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/30 p-3">
-                {phone.updates.map((update) => (
+                {phones[0].updates.map((update) => (
                   <div
                     key={update.id}
                     className="p-3 rounded-md bg-zinc-800/50 border border-zinc-700/50"

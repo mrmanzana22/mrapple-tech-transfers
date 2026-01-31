@@ -10,6 +10,7 @@ import {
   Hash,
   MessageSquare,
   AlertTriangle,
+  Check,
 } from "lucide-react";
 import {
   Card,
@@ -30,6 +31,9 @@ interface PhoneCardProps {
   onTransfer?: (phone: Phone) => void;
   index?: number;
   showTransferButton?: boolean;
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelect?: (phone: Phone) => void;
 }
 
 // ============================================
@@ -94,23 +98,56 @@ const getStaggerDelay = (index: number): string => {
 // COMPONENT
 // ============================================
 
-function PhoneCardComponent({ phone, onTransfer, index = 0, showTransferButton = true }: PhoneCardProps) {
+function PhoneCardComponent({
+  phone,
+  onTransfer,
+  index = 0,
+  showTransferButton = true,
+  isSelectable = false,
+  isSelected = false,
+  onSelect,
+}: PhoneCardProps) {
   const estadoConfig = getEstadoConfig(phone.estado);
   const gradoConfig = getGradoConfig(phone.grado);
 
+  const handleCardClick = () => {
+    if (isSelectable && onSelect) {
+      onSelect(phone);
+    }
+  };
+
   return (
     <div
-      className="w-full animate-fade-in-up card-hover opacity-0"
+      className={`w-full animate-fade-in-up card-hover opacity-0 ${isSelectable ? "cursor-pointer" : ""}`}
       style={{ animationDelay: getStaggerDelay(index), animationFillMode: "forwards" }}
+      onClick={isSelectable ? handleCardClick : undefined}
     >
-      <Card className="relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 transition-shadow duration-300">
+      <Card className={`relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 transition-all duration-300 ${isSelected ? "ring-2 ring-blue-500 border-blue-500/50" : ""}`}>
         {/* Gradient accent line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+        <div className={`absolute top-0 left-0 right-0 h-[2px] ${isSelected ? "bg-blue-500" : "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"}`} />
 
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             {/* Phone name and model */}
             <div className="flex items-center gap-3 min-w-0">
+              {/* Selection checkbox */}
+              {isSelectable && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect?.(phone);
+                  }}
+                  className={`flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                    isSelected
+                      ? "bg-blue-500 border-blue-500"
+                      : "border-slate-600 hover:border-slate-500"
+                  }`}
+                  aria-label={isSelected ? "Deseleccionar" : "Seleccionar"}
+                >
+                  {isSelected && <Check className="h-4 w-4 text-white" />}
+                </button>
+              )}
               <div className="flex-shrink-0 p-2 rounded-lg bg-slate-800/80">
                 <Smartphone className="h-5 w-5 text-slate-400" />
               </div>
@@ -215,14 +252,17 @@ function PhoneCardComponent({ phone, onTransfer, index = 0, showTransferButton =
 
 // Memoize with custom comparator that ignores index changes
 export const PhoneCard = React.memo(PhoneCardComponent, (prevProps, nextProps) => {
-  // Re-render only if phone data or onTransfer changes, ignore index
+  // Re-render only if phone data or handlers change, ignore index
   return (
     prevProps.phone.id === nextProps.phone.id &&
     prevProps.phone.estado === nextProps.phone.estado &&
     prevProps.phone.tecnico === nextProps.phone.tecnico &&
     prevProps.phone.tiene_comentarios === nextProps.phone.tiene_comentarios &&
     prevProps.phone.review === nextProps.phone.review &&
-    prevProps.onTransfer === nextProps.onTransfer
+    prevProps.onTransfer === nextProps.onTransfer &&
+    prevProps.isSelectable === nextProps.isSelectable &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.onSelect === nextProps.onSelect
   );
 });
 

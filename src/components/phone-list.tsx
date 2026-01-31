@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { Smartphone, SearchX } from "lucide-react";
+import { Smartphone, SearchX, CheckSquare, ArrowRightLeft, X } from "lucide-react";
 import { PhoneCard, PhoneCardSkeleton } from "@/components/phone-card";
+import { Button } from "@/components/ui/button";
 import type { Phone } from "@/types";
+
+const MAX_BATCH_SIZE = 10;
 
 // ============================================
 // TYPES
@@ -13,6 +16,7 @@ import type { Phone } from "@/types";
 interface PhoneListProps {
   phones: Phone[];
   onTransfer: (phone: Phone) => void;
+  onBatchTransfer?: (phones: Phone[]) => void;
   isLoading?: boolean;
 }
 
@@ -20,9 +24,13 @@ interface PhoneListProps {
 // COMPONENT
 // ============================================
 
-export function PhoneList({ phones, onTransfer, isLoading = false }: PhoneListProps) {
+export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = false }: PhoneListProps) {
   // Auto-animate for smooth list transitions (add, remove, reorder)
   const [listRef] = useAutoAnimate<HTMLDivElement>();
+
+  // Selection state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Memoize the transfer handler
   const handleTransfer = useCallback(
@@ -31,6 +39,44 @@ export function PhoneList({ phones, onTransfer, isLoading = false }: PhoneListPr
     },
     [onTransfer]
   );
+
+  // Selection handlers
+  const handleSelect = useCallback((phone: Phone) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(phone.id)) {
+        next.delete(phone.id);
+      } else {
+        if (next.size >= MAX_BATCH_SIZE) {
+          return prev; // Don't add if at limit
+        }
+        next.add(phone.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      if (prev) {
+        // Exiting selection mode, clear selection
+        setSelectedIds(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleBatchTransferClick = useCallback(() => {
+    if (!onBatchTransfer) return;
+    const selectedPhones = phones.filter((p) => selectedIds.has(p.id));
+    if (selectedPhones.length > 0) {
+      onBatchTransfer(selectedPhones);
+    }
+  }, [phones, selectedIds, onBatchTransfer]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   // Loading state
   if (isLoading) {
@@ -64,15 +110,50 @@ export function PhoneList({ phones, onTransfer, isLoading = false }: PhoneListPr
   return (
     <div className="space-y-6">
       {/* Stats bar */}
-      <div className="flex items-center gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 animate-fade-in-up">
-        <div className="p-2 rounded-lg bg-green-500/10">
-          <Smartphone className="w-5 h-5 text-green-400" />
+      <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 animate-fade-in-up">
+        <div className="flex items-center gap-4">
+          <div className="p-2 rounded-lg bg-green-500/10">
+            <Smartphone className="w-5 h-5 text-green-400" />
+          </div>
+          <div>
+            <p className="text-sm text-zinc-400">Telefonos asignados</p>
+            <p className="text-2xl font-bold text-white">{phones.length}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm text-zinc-400">Telefonos asignados</p>
-          <p className="text-2xl font-bold text-white">{phones.length}</p>
-        </div>
+
+        {/* Selection toggle */}
+        {onBatchTransfer && phones.length > 1 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleSelectionMode}
+            className={`border-zinc-700 ${
+              selectionMode
+                ? "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                : "text-zinc-400 hover:text-zinc-300"
+            }`}
+          >
+            {selectionMode ? (
+              <>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </>
+            ) : (
+              <>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Seleccionar
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Selection hint */}
+      {selectionMode && selectedIds.size === 0 && (
+        <p className="text-sm text-zinc-500 text-center">
+          Selecciona hasta {MAX_BATCH_SIZE} teléfonos para transferir
+        </p>
+      )}
 
       {/* Grid with auto-animate for list changes */}
       <div
@@ -83,11 +164,47 @@ export function PhoneList({ phones, onTransfer, isLoading = false }: PhoneListPr
           <PhoneCard
             key={phone.id}
             phone={phone}
-            onTransfer={handleTransfer}
+            onTransfer={selectionMode ? undefined : handleTransfer}
             index={index}
+            showTransferButton={!selectionMode}
+            isSelectable={selectionMode}
+            isSelected={selectedIds.has(phone.id)}
+            onSelect={handleSelect}
           />
         ))}
       </div>
+
+      {/* Floating action bar for batch transfer */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/50">
+            <span className="text-sm text-zinc-300">
+              <span className="font-semibold text-white">{selectedIds.size}</span>
+              {selectedIds.size >= MAX_BATCH_SIZE && (
+                <span className="text-amber-400 ml-1">(máx)</span>
+              )}
+              {" "}seleccionado{selectedIds.size !== 1 ? "s" : ""}
+            </span>
+            <div className="w-px h-6 bg-zinc-700" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              className="text-zinc-400 hover:text-zinc-300"
+            >
+              Limpiar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBatchTransferClick}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              Transferir {selectedIds.size}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
