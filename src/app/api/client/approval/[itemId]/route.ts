@@ -5,6 +5,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
+// Retry webhook con backoff exponencial
+async function notifyN8nWithRetry(
+  payload: object,
+  maxRetries = 3
+): Promise<{ success: boolean; error?: string }> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(
+        "https://appn8n-n8n.lx6zon.easypanel.host/webhook/repair-approval-notify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (response.ok) {
+        return { success: true };
+      }
+      console.error(`n8n webhook attempt ${attempt} failed: status ${response.status}`);
+    } catch (err) {
+      console.error(`n8n webhook attempt ${attempt} error:`, err);
+    }
+    
+    if (attempt < maxRetries) {
+      // Backoff exponencial: 1s, 2s, 4s
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+    }
+  }
+  return { success: false, error: `Failed after ${maxRetries} attempts` };
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
@@ -93,19 +124,30 @@ export async function POST(
       .eq("item_id", itemId)
       .single();
 
-    // Fire and forget - don't wait for n8n response
-    fetch("https://appn8n-n8n.lx6zon.easypanel.host/webhook/repair-approval-notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const webhookPayload = {
+      item_id: itemId,
+      decision: decision,
+      cliente_nombre: repairDetails?.cliente_nombre || "Cliente",
+      cliente_telefono: repairDetails?.cliente_telefono || "",
+      tipo_reparacion: repairDetails?.tipo_reparacion || "Reparación",
+      valor: repairDetails?.valor_a_cobrar || 0,
+    };
+
+    // Intentar con retry
+    const webhookResult = await notifyN8nWithRetry(webhookPayload);
+
+    // Si falla después de todos los intentos, guardar para retry posterior
+    if (!webhookResult.success) {
+      console.error("n8n webhook failed after all retries, saving to failures table");
+      await supabase.from("mrapple_webhook_failures").insert({
         item_id: itemId,
-        decision: decision,
-        cliente_nombre: repairDetails?.cliente_nombre || "Cliente",
-        cliente_telefono: repairDetails?.cliente_telefono || "",
-        tipo_reparacion: repairDetails?.tipo_reparacion || "Reparación",
-        valor: repairDetails?.valor_a_cobrar || 0,
-      }),
-    }).catch((err) => console.error("n8n webhook error:", err));
+        payload: webhookPayload,
+        error_message: webhookResult.error,
+        attempts: 3,
+        status: "pending",
+        last_attempt_at: new Date().toISOString(),
+      });
+    }
 
     return NextResponse.json({
       success: true,
