@@ -5,6 +5,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
+const DANIELA_PHONE = "573017428749";
+const EVOLUTION_API_URL = "https://evo.mfrp.com.co/message/sendText/tecnicos";
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
+
 // Retry webhook con backoff exponencial
 async function notifyN8nWithRetry(
   payload: object,
@@ -34,6 +38,25 @@ async function notifyN8nWithRetry(
     }
   }
   return { success: false, error: `Failed after ${maxRetries} attempts` };
+}
+
+// Enviar alerta a Daniela cuando falla el webhook
+async function sendAlertToDaniela(itemId: string, clientName: string) {
+  try {
+    await fetch(EVOLUTION_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({
+        number: DANIELA_PHONE,
+        text: `⚠️ ALERTA: Falló notificación de aprobación\n\nCliente: ${clientName}\nItem: ${itemId}\n\nEl cliente aprobó pero Monday NO se actualizó.\nRevisar tabla mrapple_webhook_failures.`,
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to send alert to Daniela:", err);
+  }
 }
 
 export async function POST(
@@ -136,9 +159,11 @@ export async function POST(
     // Intentar con retry
     const webhookResult = await notifyN8nWithRetry(webhookPayload);
 
-    // Si falla después de todos los intentos, guardar para retry posterior
+    // Si falla después de todos los intentos, guardar y alertar
     if (!webhookResult.success) {
       console.error("n8n webhook failed after all retries, saving to failures table");
+      
+      // Guardar en tabla de fallos
       await supabase.from("mrapple_webhook_failures").insert({
         item_id: itemId,
         payload: webhookPayload,
@@ -147,6 +172,9 @@ export async function POST(
         status: "pending",
         last_attempt_at: new Date().toISOString(),
       });
+
+      // Alertar a Daniela
+      await sendAlertToDaniela(itemId, repairDetails?.cliente_nombre || "Cliente");
     }
 
     return NextResponse.json({
