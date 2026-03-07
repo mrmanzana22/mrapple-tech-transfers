@@ -104,10 +104,10 @@ export async function GET(request: NextRequest) {
         return addCorsHeaders(res, request);
       }
 
-      const res = NextResponse.json(
-        { success: false, error: "No se pudo obtener reparaciones en este momento" },
-        { status: 502 }
-      );
+      // Final fail-open fallback for UX: avoid blocking the page with 502s.
+      const res = NextResponse.json([]);
+      res.headers.set("X-Cache", "MISS");
+      res.headers.set("X-Data-Source", "empty-fallback");
       return addCorsHeaders(res, request);
     }
   } catch (error) {
