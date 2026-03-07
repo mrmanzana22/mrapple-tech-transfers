@@ -23,7 +23,7 @@ type View = 'dashboard' | 'video' | 'quiz' | 'results';
 export default function EntrenamientoPage() {
   const router = useRouter();
   const { isAuthenticated, tecnico, loading: authLoading } = useAuth();
-  const { progress, isLoading, submitting, completeVideo, getVideoUrl, submitQuiz, refresh } = useTraining();
+  const { progress, error: trainingError, isLoading, submitting, completeVideo, getVideoUrl, submitQuiz, refresh } = useTraining();
 
   const [view, setView] = useState<View>('dashboard');
   const [activeLeccion, setActiveLeccion] = useState<string | null>(null);
@@ -185,6 +185,14 @@ export default function EntrenamientoPage() {
                 </div>
               )}
             </div>
+
+            {/* Error display */}
+            {trainingError && (
+              <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4">
+                <p className="text-sm text-red-400 font-medium">Error al cargar progreso:</p>
+                <p className="text-xs text-red-300 mt-1">{trainingError.message}</p>
+              </div>
+            )}
 
             {/* Lesson list */}
             <div className="space-y-3">
