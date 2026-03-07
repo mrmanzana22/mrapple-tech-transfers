@@ -6,6 +6,7 @@ import { compressImageForUpload } from "./image-compress";
 import type { Phone, TransferPayload, ApiResponse, ReparacionCliente } from "@/types";
 
 const { baseUrl, endpoints } = config.n8n;
+const { baseUrl: liveBaseUrl, endpoints: liveEndpoints } = config.live;
 
 /**
  * Gets phones assigned to a tecnico
@@ -13,7 +14,7 @@ const { baseUrl, endpoints } = config.n8n;
  */
 export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
   try {
-    const url = `${baseUrl}${endpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
+    const url = `${liveBaseUrl}${liveEndpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -123,10 +124,20 @@ export async function transferPhone(payload: TransferPayload): Promise<ApiRespon
 export interface TecnicoWithPhones {
   nombre: string;
   phones: Phone[];
+  phonesCount?: number;
   error?: string;
 }
 
 export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]> {
+  const resumen = await getEquipoResumen();
+  if (resumen.success && resumen.data && resumen.data.length > 0) {
+    return resumen.data.map((row) => ({
+      nombre: row.tecnico,
+      phones: [],
+      phonesCount: row.phonesCount,
+    }));
+  }
+
   const tecnicos = await fetchTecnicosActivos();
   const results = await Promise.all(
     tecnicos.map(async (nombre) => {
@@ -134,11 +145,12 @@ export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]>
       return {
         nombre,
         phones: response.success ? (response.data ?? []) : [],
+        phonesCount: response.success ? (response.data?.length ?? 0) : 0,
         error: response.success ? undefined : response.error,
       };
     })
   );
-  return results.sort((a, b) => b.phones.length - a.phones.length);
+  return results.sort((a, b) => (b.phonesCount ?? b.phones.length) - (a.phonesCount ?? a.phones.length));
 }
 
 /**
@@ -146,7 +158,7 @@ export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]>
  */
 export async function getReparacionesCliente(tecnico: string): Promise<ApiResponse<ReparacionCliente[]>> {
   try {
-    const url = `${baseUrl}${endpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}`;
+    const url = `${liveBaseUrl}${liveEndpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}`;
     const response = await fetch(url, {
       credentials: "include",
       headers: { "X-Requested-With": "mrapple" },
@@ -164,6 +176,35 @@ export async function getReparacionesCliente(tecnico: string): Promise<ApiRespon
     return { success: false, error: data.error || "Error al obtener reparaciones" };
   } catch (error) {
     console.error("Get reparaciones error:", error);
+    return { success: false, error: "Error de conexión" };
+  }
+}
+
+export interface EquipoResumen {
+  tecnico: string;
+  phonesCount: number;
+  repairsCount: number;
+  updatedAt: string | null;
+}
+
+export async function getEquipoResumen(): Promise<ApiResponse<EquipoResumen[]>> {
+  try {
+    const response = await fetch(`${liveBaseUrl}${liveEndpoints.equipoResumen}`, {
+      credentials: "include",
+      headers: { "X-Requested-With": "mrapple" },
+    });
+
+    if (response.status === 401) {
+      return { success: false, error: "Sesión expirada" };
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return { success: true, data };
+    }
+    return { success: false, error: data.error || "Error al obtener resumen de equipo" };
+  } catch (error) {
+    console.error("Get equipo resumen error:", error);
     return { success: false, error: "Error de conexión" };
   }
 }

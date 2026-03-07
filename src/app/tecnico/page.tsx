@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente } from "@/lib/api";
+import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico } from "@/lib/api";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ export default function TecnicoPage() {
   // Team state (Equipo tab)
   const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
   const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
+  const [loadingTeamPhones, setLoadingTeamPhones] = useState<Set<string>>(new Set());
   const [teamLoading, setTeamLoading] = useState(false);
   const [equipoSubTab, setEquipoSubTab] = useState<"telefonos" | "clientes">("telefonos");
   const [teamClientesData, setTeamClientesData] = useState<{ tecnico: string; reparaciones: ReparacionCliente[] }[]>([]);
@@ -155,7 +156,9 @@ export default function TecnicoPage() {
   }, [activeTab, teamData.length, loadTeamData]);
 
   // Toggle tecnico expansion
-  const toggleTecnico = useCallback((nombre: string) => {
+  const toggleTecnico = useCallback(async (nombre: string) => {
+    const shouldExpand = !expandedTecnicos.has(nombre);
+
     setExpandedTecnicos((prev) => {
       const next = new Set(prev);
       if (next.has(nombre)) {
@@ -165,7 +168,46 @@ export default function TecnicoPage() {
       }
       return next;
     });
-  }, []);
+
+    if (!shouldExpand) return;
+
+    const tecnicoData = teamData.find((t) => t.nombre === nombre);
+    const alreadyLoaded = (tecnicoData?.phones?.length || 0) > 0;
+    const expectedCount = tecnicoData?.phonesCount ?? 0;
+
+    if (alreadyLoaded || expectedCount === 0) return;
+
+    setLoadingTeamPhones((prev) => {
+      const next = new Set(prev);
+      next.add(nombre);
+      return next;
+    });
+
+    try {
+      const result = await getPhonesByTecnico(nombre);
+      if (result.success && result.data) {
+        setTeamData((prev) =>
+          prev.map((item) =>
+            item.nombre === nombre
+              ? {
+                  ...item,
+                  phones: result.data ?? [],
+                  phonesCount: result.data?.length ?? item.phonesCount ?? 0,
+                }
+              : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error loading phones for tecnico:", nombre, error);
+    } finally {
+      setLoadingTeamPhones((prev) => {
+        const next = new Set(prev);
+        next.delete(nombre);
+        return next;
+      });
+    }
+  }, [expandedTecnicos, teamData]);
 
   // Load team clientes data
   const loadTeamClientesData = useCallback(async () => {
@@ -669,7 +711,7 @@ export default function TecnicoPage() {
                           <div className="text-left">
                             <h3 className="font-semibold text-white">{tec.nombre}</h3>
                             <p className="text-sm text-zinc-400">
-                              {tec.phones.length} teléfono{tec.phones.length !== 1 ? "s" : ""}
+                              {(tec.phonesCount ?? tec.phones.length)} teléfono{(tec.phonesCount ?? tec.phones.length) !== 1 ? "s" : ""}
                             </p>
                           </div>
                         </div>
@@ -681,7 +723,13 @@ export default function TecnicoPage() {
                       </button>
                       {expandedTecnicos.has(tec.nombre) && (
                         <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
-                          {tec.phones.length === 0 ? (
+                          {loadingTeamPhones.has(tec.nombre) ? (
+                            <div className="grid gap-3 mt-4">
+                              {[1, 2].map((i) => (
+                                <Skeleton key={i} className="h-24 w-full bg-zinc-800" />
+                              ))}
+                            </div>
+                          ) : tec.phones.length === 0 ? (
                             <p className="text-zinc-500 text-sm py-4 text-center">
                               Sin teléfonos asignados
                             </p>

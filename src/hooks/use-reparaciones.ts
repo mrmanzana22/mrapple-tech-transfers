@@ -34,7 +34,7 @@ const reparacionesFetcher = async (url: string): Promise<ReparacionCliente[]> =>
 export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparacionesOptions) {
   const shouldFetch = autoFetch && tecnicoNombre;
   const url = shouldFetch
-    ? `/api/n8n/tech-reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}`
+    ? `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}`
     : null;
 
   // Load cached data for instant display

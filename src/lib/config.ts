@@ -14,6 +14,15 @@ export const config = {
     },
   },
 
+  live: {
+    baseUrl: "/api/live",
+    endpoints: {
+      getPhones: "/telefonos",
+      reparaciones: "/reparaciones",
+      equipoResumen: "/equipo-resumen",
+    },
+  },
+
   // Monday.com Board Info
   monday: {
     boardId: process.env.NEXT_PUBLIC_MONDAY_BOARD_ID || "672309386",
