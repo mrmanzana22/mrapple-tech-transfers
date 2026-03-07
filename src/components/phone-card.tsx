@@ -30,6 +30,7 @@ interface PhoneCardProps {
   phone: Phone;
   onTransfer?: (phone: Phone) => void;
   index?: number;
+  disableAnimation?: boolean;
   showTransferButton?: boolean;
   isSelectable?: boolean;
   isSelected?: boolean;
@@ -102,6 +103,7 @@ function PhoneCardComponent({
   phone,
   onTransfer,
   index = 0,
+  disableAnimation = false,
   showTransferButton = true,
   isSelectable = false,
   isSelected = false,
@@ -118,8 +120,8 @@ function PhoneCardComponent({
 
   return (
     <div
-      className={`w-full animate-fade-in-up card-hover opacity-0 ${isSelectable ? "cursor-pointer" : ""}`}
-      style={{ animationDelay: getStaggerDelay(index), animationFillMode: "forwards" }}
+      className={`w-full card-hover ${disableAnimation ? "" : "animate-fade-in-up opacity-0"} ${isSelectable ? "cursor-pointer" : ""}`}
+      style={disableAnimation ? undefined : { animationDelay: getStaggerDelay(index), animationFillMode: "forwards" }}
       onClick={isSelectable ? handleCardClick : undefined}
     >
       <Card className={`relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 transition-all duration-300 ${isSelected ? "ring-2 ring-blue-500 border-blue-500/50" : ""}`}>

@@ -10,6 +10,42 @@ import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
 import { cache, CACHE_TTL } from "@/lib/cache";
 
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || "https://appn8n-n8n.lx6zon.easypanel.host/webhook";
+const N8N_TIMEOUT_MS = 3500;
+const MAX_RETRIES = 1;
+const STALE_TTL_MS = 5 * 60 * 1000; // 5 minutes fallback window
+
+async function fetchReparacionesFromN8nWithRetry(tecnicoQuery: string): Promise<unknown[]> {
+  const n8nUrl = `${N8N_BASE}/tech-reparaciones?tecnico=${encodeURIComponent(tecnicoQuery)}`;
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), N8N_TIMEOUT_MS);
+
+    try {
+      const n8nResponse = await fetch(n8nUrl, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      const data = await n8nResponse.json();
+
+      if (Array.isArray(data)) {
+        return data;
+      }
+
+      throw new Error(data?.error || "Error from n8n");
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw lastError || new Error("n8n fetch failed");
+}
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -48,6 +84,7 @@ export async function GET(request: NextRequest) {
 
     // Check cache first
     const cacheKey = `reparaciones:${tecnicoQuery}`;
+    const staleKey = `${cacheKey}:stale`;
     const cached = cache.get<unknown[]>(cacheKey);
 
     if (cached) {
@@ -56,26 +93,29 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(res, request);
     }
 
-    // Forward to n8n
-    const n8nUrl = `${N8N_BASE}/tech-reparaciones?tecnico=${encodeURIComponent(tecnicoQuery)}`;
-    const n8nResponse = await fetch(n8nUrl);
-    const data = await n8nResponse.json();
-
-    // n8n returns array directly or { error: "..." }
-    if (Array.isArray(data)) {
-      // Cache successful response
+    try {
+      const data = await fetchReparacionesFromN8nWithRetry(tecnicoQuery);
       cache.set(cacheKey, data, CACHE_TTL.REPARACIONES);
-
+      cache.set(staleKey, data, STALE_TTL_MS);
       const res = NextResponse.json(data);
       res.headers.set("X-Cache", "MISS");
       return addCorsHeaders(res, request);
-    }
+    } catch (n8nError) {
+      console.error("tech-reparaciones n8n fetch failed, trying stale cache:", n8nError);
 
-    const res = NextResponse.json(
-      { success: false, error: data.error || "Error from n8n" },
-      { status: 500 }
-    );
-    return addCorsHeaders(res, request);
+      const stale = cache.get<unknown[]>(staleKey);
+      if (stale) {
+        const res = NextResponse.json(stale);
+        res.headers.set("X-Cache", "STALE");
+        return addCorsHeaders(res, request);
+      }
+
+      const res = NextResponse.json(
+        { success: false, error: "No se pudo obtener reparaciones en este momento" },
+        { status: 502 }
+      );
+      return addCorsHeaders(res, request);
+    }
   } catch (error) {
     console.error("tech-reparaciones error:", error);
     const res = NextResponse.json(

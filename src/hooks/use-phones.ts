@@ -44,11 +44,12 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     shouldFetch ? tecnicoNombre : null,
     phonesFetcher,
     {
-      revalidateOnFocus: true,           // Actualiza al volver a la tab
+      revalidateOnFocus: false,          // Evita recargas costosas al cambiar de tab/ventana
       revalidateOnReconnect: true,
       dedupingInterval: config.intervals.deduping,
-      refreshInterval: config.intervals.polling,
+      refreshInterval: 0,                // Manual refresh para priorizar velocidad percibida
       refreshWhenHidden: false,
+      keepPreviousData: true,
       errorRetryCount: 3,
       errorRetryInterval: config.intervals.errorRetry,
       fallbackData: getFallbackData(),   // Carga instantánea con datos previos

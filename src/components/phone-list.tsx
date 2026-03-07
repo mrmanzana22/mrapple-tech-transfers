@@ -31,6 +31,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
   // Selection state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const disableCardAnimations = phones.length > 8;
 
   // Memoize the transfer handler
   const handleTransfer = useCallback(
@@ -166,6 +167,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
             phone={phone}
             onTransfer={selectionMode ? undefined : handleTransfer}
             index={index}
+            disableAnimation={disableCardAnimations}
             showTransferButton={!selectionMode}
             isSelectable={selectionMode}
             isSelected={selectedIds.has(phone.id)}
