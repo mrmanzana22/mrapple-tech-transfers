@@ -18,7 +18,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
-import { ChevronDown, UserCircle, XCircle, Search, X, ArrowRightLeft } from "lucide-react";
+import { ChevronDown, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap } from "lucide-react";
+import { canAccessTraining } from "@/lib/training";
 
 // Hook para debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -473,6 +474,25 @@ export default function TecnicoPage() {
         isRefreshing={isRefreshing}
         isSyncing={isSyncing}
       />
+
+      {/* Training Banner - Only for NORMAN and IDEL */}
+      {tecnico && canAccessTraining(tecnico.nombre) && (
+        <div className="container mx-auto px-4 pt-4">
+          <button
+            onClick={() => router.push('/tecnico/entrenamiento')}
+            className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20 hover:border-green-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-green-400" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-semibold text-white">Entrenamiento Microsoldadura</p>
+              <p className="text-xs text-zinc-500">Continúa tu progreso</p>
+            </div>
+            <ChevronDown className="w-4 h-4 text-zinc-500 -rotate-90 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="container mx-auto px-4 pt-4">
