@@ -50,7 +50,8 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
       refreshInterval: 0,                // Manual refresh para priorizar velocidad percibida
       refreshWhenHidden: false,
       keepPreviousData: true,
-      errorRetryCount: 3,
+      shouldRetryOnError: false,         // Evita quedarse en loading varios segundos por reintentos
+      errorRetryCount: 0,
       errorRetryInterval: config.intervals.errorRetry,
       fallbackData: getFallbackData(),   // Carga instantánea con datos previos
       onSuccess: (data) => {
@@ -98,10 +99,11 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
 
   // isSyncing = está actualizando en background (no es carga inicial)
   const isSyncing = isValidating && !isLoading && phones.length > 0;
+  const showInitialLoading = isLoading && phones.length === 0 && !error;
 
   return {
     phones,
-    isLoading,
+    isLoading: showInitialLoading,
     isSyncing,          // Nuevo: sincronizando en background
     isTransferring: isValidating,
     error: error?.message || null,

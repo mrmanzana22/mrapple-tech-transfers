@@ -10,7 +10,7 @@ import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
 import { cache, CACHE_TTL } from "@/lib/cache";
 
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || "https://appn8n-n8n.lx6zon.easypanel.host/webhook";
-const N8N_TIMEOUT_MS = 3500;
+const N8N_TIMEOUT_MS = 6000;
 const MAX_RETRIES = 1;
 const STALE_TTL_MS = 5 * 60 * 1000; // 5 minutes fallback window
 
