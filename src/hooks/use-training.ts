@@ -22,7 +22,10 @@ async function trainingFetch(url: string, options: RequestInit = {}) {
 const progressFetcher = async (url: string) => {
   const res = await trainingFetch(url);
   const json = await res.json();
-  if (!json.success) throw new Error(json.error || 'Error al cargar progreso');
+  if (!json.success) {
+    const debugInfo = json.debug ? ` [${json.debug.code}: ${json.debug.message}${json.debug.hint ? ' - ' + json.debug.hint : ''}]` : '';
+    throw new Error((json.error || 'Error al cargar progreso') + debugInfo);
+  }
   return json.data as (LessonProgress & { titulo: string; descripcion: string; orden: number })[];
 };
 

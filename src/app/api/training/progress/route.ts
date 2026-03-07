@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('training progress fetch error:', error);
       return addCorsHeaders(
-        NextResponse.json({ success: false, error: 'Error al obtener progreso' }, { status: 500 }),
+        NextResponse.json({ success: false, error: 'Error al obtener progreso', debug: { message: error.message, code: error.code, details: error.details, hint: error.hint } }, { status: 500 }),
         request
       );
     }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       if (insertError) {
         console.error('training progress init error:', insertError);
         return addCorsHeaders(
-          NextResponse.json({ success: false, error: 'Error al inicializar progreso' }, { status: 500 }),
+          NextResponse.json({ success: false, error: 'Error al inicializar progreso', debug: { message: insertError.message, code: insertError.code, details: insertError.details, hint: insertError.hint } }, { status: 500 }),
           request
         );
       }
