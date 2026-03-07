@@ -41,4 +41,8 @@ Autenticación:
 ## SQL
 
 Ejecutar script: `docs/11-live-snapshot.sql`
+Warmup inicial (sin n8n configurado todavía):
+
+- `POST /api/live/sync/warmup` (requiere sesión `jefe`)
+- Lee n8n por técnico y llena snapshots en Supabase.
 
