@@ -91,14 +91,18 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
         }
       );
 
-      // Revalidate with forced refresh to bypass other Vercel instances' cache
+      // Revalidate with forced refresh, excluding the just-transferred phone
+      // (Monday API may not have propagated the change yet)
+      const transferredId = payload.item_id;
       setTimeout(() => {
         mutate(async () => {
           const result = await getPhonesByTecnico(tecnicoNombre, true);
-          if (result.success && result.data) return result.data;
+          if (result.success && result.data) {
+            return result.data.filter(p => p.id !== transferredId);
+          }
           return optimisticPhones;
         }, { revalidate: false });
-      }, 1500);
+      }, 2000);
     },
     [phones, mutate, tecnicoNombre]
   );

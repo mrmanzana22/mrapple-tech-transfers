@@ -78,9 +78,13 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
   }, [mutate]);
 
   // Force refresh bypasses server cache (for use after mutations)
-  const forceRefresh = useCallback(async () => {
+  // excludeIds: items recently mutated that Monday might not have propagated yet
+  const forceRefresh = useCallback(async (excludeIds?: string[]) => {
     const refreshUrl = `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}&refresh=1`;
-    const data = await reparacionesFetcher(refreshUrl);
+    let data = await reparacionesFetcher(refreshUrl);
+    if (excludeIds?.length) {
+      data = data.filter(r => !excludeIds.includes(r.id));
+    }
     await mutate(data, { revalidate: false });
   }, [tecnicoNombre, mutate]);
 

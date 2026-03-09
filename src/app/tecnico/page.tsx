@@ -360,7 +360,8 @@ export default function TecnicoPage() {
           (current) => current?.filter((r) => r.id !== reparacion.id),
           { revalidate: false }
         );
-        setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
+        // Exclude this item from refresh to prevent reappearing before Monday propagates
+        setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
         toast.error(response.error || "Error al actualizar");
       }
@@ -385,7 +386,7 @@ export default function TecnicoPage() {
           (current) => current?.filter((r) => r.id !== reparacion.id),
           { revalidate: false }
         );
-        setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
+        setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
         toast.error(response.error || "Error al actualizar");
       }
@@ -427,8 +428,8 @@ export default function TecnicoPage() {
         if (response.success) {
           toast.success("Reparación transferida correctamente");
           handleReparacionModalClose();
-          // Soft revalidate in background
-          setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
+          // Soft revalidate in background, excluding transferred item
+          setTimeout(() => forceRefreshReparaciones([payload.item_id]).catch(() => {}), 2000);
         } else {
           // Rollback on error
           mutateReparaciones();
