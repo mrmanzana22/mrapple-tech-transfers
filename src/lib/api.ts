@@ -129,26 +129,23 @@ export interface TecnicoWithPhones {
 }
 
 export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]> {
-  // Use resumen for technician names, but always fetch actual phones per-technician
-  // (resumen phonesCount can be stale when items are in shared groups like "Reparaciones Generales")
+  // Fast path: get technician names + approximate counts from resumen (Supabase snapshot)
   const resumen = await getEquipoResumen();
 
   const tecnicos = (resumen.success && resumen.data && resumen.data.length > 0)
     ? resumen.data.map(r => r.tecnico)
     : await fetchTecnicosActivos();
 
-  const results = await Promise.all(
-    tecnicos.map(async (nombre) => {
-      const response = await getPhonesByTecnico(nombre);
-      return {
-        nombre,
-        phones: response.success ? (response.data ?? []) : [],
-        phonesCount: response.success ? (response.data?.length ?? 0) : 0,
-        error: response.success ? undefined : response.error,
-      };
-    })
-  );
-  return results.sort((a, b) => (b.phonesCount ?? b.phones.length) - (a.phonesCount ?? a.phones.length));
+  const resumenMap = new Map<string, number>();
+  if (resumen.success && resumen.data) {
+    resumen.data.forEach(r => resumenMap.set(r.tecnico, r.phonesCount));
+  }
+
+  return tecnicos.map(nombre => ({
+    nombre,
+    phones: [],
+    phonesCount: resumenMap.get(nombre) ?? 0,
+  }));
 }
 
 /**

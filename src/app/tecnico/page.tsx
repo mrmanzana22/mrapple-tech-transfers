@@ -134,20 +134,37 @@ export default function TecnicoPage() {
 
   // Reparaciones auto-fetch when tab is active (handled by useReparaciones hook)
 
-  // Load team data
+  // Load team data: fast from resumen, then update counts in background
   const loadTeamData = useCallback(async () => {
     setTeamLoading(true);
+    let initialData: TecnicoWithPhones[] = [];
     try {
-      const data = await fetchAllTecnicosWithPhones();
-      setTeamData(data);
-      // Expand first tecnico by default
-      if (data.length > 0) {
-        setExpandedTecnicos(new Set([data[0].nombre]));
+      initialData = await fetchAllTecnicosWithPhones();
+      setTeamData(initialData);
+      if (initialData.length > 0) {
+        setExpandedTecnicos(new Set([initialData[0].nombre]));
       }
     } catch (error) {
       console.error("Error loading team data:", error);
     } finally {
       setTeamLoading(false);
+    }
+
+    // Background: fetch real phone counts per technician (doesn't block UI)
+    if (initialData.length > 0) {
+      Promise.all(
+        initialData.map(async (tec) => {
+          try {
+            const response = await getPhonesByTecnico(tec.nombre);
+            if (response.success && response.data) {
+              return { ...tec, phones: response.data, phonesCount: response.data.length };
+            }
+          } catch {}
+          return tec;
+        })
+      ).then(updated => {
+        setTeamData(updated.sort((a, b) => (b.phonesCount ?? 0) - (a.phonesCount ?? 0)));
+      });
     }
   }, []);
 
