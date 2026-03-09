@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     if (isLiveSnapshotEnabled()) {
       try {
         const liveData = await readLivePhonesByTecnico(tecnicoQuery);
-        if (liveData !== null) {
+        if (liveData !== null && liveData.length > 0) {
           cache.set(cacheKey, liveData, CACHE_TTL.TELEFONOS);
           cache.set(staleKey, liveData, STALE_TTL_MS);
           const res = NextResponse.json(liveData);

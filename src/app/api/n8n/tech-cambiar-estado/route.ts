@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     const monday = await getOwnerTextForItem(itemId, OWNER_COLUMNS.REPAIRS);
     const currentOwner = (monday.ownerText ?? "").trim();
 
-    if (currentOwner !== session.monday_status_value) {
+    if (currentOwner.toUpperCase() !== (session.monday_status_value || "").toUpperCase()) {
       const res = NextResponse.json(
         {
           success: false,

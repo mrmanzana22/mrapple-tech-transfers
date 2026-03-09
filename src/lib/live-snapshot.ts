@@ -9,6 +9,7 @@ type TeamSummaryRow = {
 };
 
 const LIVE_SCHEMA_HINT = "mrapple_live_";
+const LIVE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes - data older than this is considered stale
 
 export function isLiveSnapshotEnabled(): boolean {
   return process.env.USE_LIVE_SNAPSHOT !== "false";
@@ -24,7 +25,7 @@ export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<Ph
     const supabase = getSupabaseServer();
     const { data, error } = await supabase
       .from("mrapple_live_phones")
-      .select("payload")
+      .select("payload, updated_at")
       .eq("tecnico_nombre", tecnicoNombre)
       .order("updated_at", { ascending: false });
 
@@ -33,7 +34,13 @@ export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<Ph
       throw error;
     }
 
-    return (data || []).map((row) => row.payload as Phone);
+    if (!data || data.length === 0) return null;
+
+    // Check staleness - if newest entry is too old, skip live data
+    const newestAt = new Date(data[0].updated_at).getTime();
+    if (Date.now() - newestAt > LIVE_MAX_AGE_MS) return null;
+
+    return data.map((row) => row.payload as Phone);
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;
@@ -45,7 +52,7 @@ export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<R
     const supabase = getSupabaseServer();
     const { data, error } = await supabase
       .from("mrapple_live_repairs")
-      .select("payload")
+      .select("payload, updated_at")
       .eq("tecnico_nombre", tecnicoNombre)
       .order("updated_at", { ascending: false });
 
@@ -54,7 +61,13 @@ export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<R
       throw error;
     }
 
-    return (data || []).map((row) => row.payload as ReparacionCliente);
+    if (!data || data.length === 0) return null;
+
+    // Check staleness - if newest entry is too old, skip live data
+    const newestAt = new Date(data[0].updated_at).getTime();
+    if (Date.now() - newestAt > LIVE_MAX_AGE_MS) return null;
+
+    return data.map((row) => row.payload as ReparacionCliente);
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;
@@ -83,10 +96,35 @@ export async function upsertLivePhones(phones: Phone[], sourceTs?: string): Prom
   }
 }
 
-export async function upsertLiveRepairs(repairs: ReparacionCliente[], sourceTs?: string): Promise<void> {
-  if (!repairs.length) return;
+export async function upsertLiveRepairs(
+  repairs: ReparacionCliente[],
+  sourceTs?: string,
+  options?: { cleanupTecnico?: string }
+): Promise<void> {
   const supabase = getSupabaseServer();
   const nowIso = new Date().toISOString();
+
+  // If we know the technician, remove their stale entries that are no longer in the fresh data
+  const cleanupTecnico = options?.cleanupTecnico;
+  if (cleanupTecnico) {
+    const freshItemIds = repairs.map((r) => String(r.id));
+    try {
+      let query = supabase
+        .from("mrapple_live_repairs")
+        .delete()
+        .eq("tecnico_nombre", cleanupTecnico);
+      if (freshItemIds.length > 0) {
+        query = query.not("item_id", "in", `(${freshItemIds.join(",")})`);
+      }
+      await query;
+    } catch (error) {
+      if (!isMissingLiveSchemaError(error)) {
+        console.error("live repairs cleanup error:", error);
+      }
+    }
+  }
+
+  if (!repairs.length) return;
 
   const rows = repairs.map((repair) => ({
     item_id: String(repair.id),

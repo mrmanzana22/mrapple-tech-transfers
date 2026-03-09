@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     if (isLiveSnapshotEnabled()) {
       try {
         const liveData = await readLiveRepairsByTecnico(tecnicoQuery);
-        if (liveData !== null) {
+        if (liveData !== null && liveData.length > 0) {
           cache.set(cacheKey, liveData, CACHE_TTL.REPARACIONES);
           cache.set(staleKey, liveData, STALE_TTL_MS);
           const res = NextResponse.json(liveData);
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       cache.set(staleKey, n8nData, STALE_TTL_MS);
 
       if (isLiveSnapshotEnabled()) {
-        upsertLiveRepairs(n8nData).then(() => refreshTeamSummary()).catch((error) => {
+        upsertLiveRepairs(n8nData, undefined, { cleanupTecnico: tecnicoQuery }).then(() => refreshTeamSummary()).catch((error) => {
           console.error("live repairs upsert error:", error);
         });
       }
