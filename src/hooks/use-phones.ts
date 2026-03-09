@@ -11,10 +11,29 @@ interface UsePhonesOptions {
   autoFetch?: boolean;
 }
 
+// Key for marking that data is dirty (mutation happened, server may have stale snapshot)
+const DIRTY_KEY_PREFIX = "phones-dirty-";
+const DIRTY_TTL_MS = 60_000; // 60s window
+
 // Fetcher function for SWR
 const phonesFetcher = async (tecnicoNombre: string): Promise<Phone[]> => {
-  const result = await getPhonesByTecnico(tecnicoNombre);
+  // Check if there was a recent mutation — if so, bypass server snapshot
+  let forceRefresh = false;
+  if (typeof window !== "undefined") {
+    try {
+      const dirtyAt = localStorage.getItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`);
+      if (dirtyAt && Date.now() - Number(dirtyAt) < DIRTY_TTL_MS) {
+        forceRefresh = true;
+      }
+    } catch {}
+  }
+
+  const result = await getPhonesByTecnico(tecnicoNombre, forceRefresh);
   if (result.success && result.data) {
+    // Clear dirty flag after successful fresh fetch
+    if (forceRefresh && typeof window !== "undefined") {
+      try { localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`); } catch {}
+    }
     return result.data;
   }
   throw new Error(result.error || "Error al obtener telefonos");
@@ -86,6 +105,10 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
 
       // Sync localStorage immediately so page navigation shows correct data
       syncToLocalStorage(optimisticPhones);
+      // Mark dirty so next page load bypasses stale server snapshot
+      if (typeof window !== "undefined") {
+        try { localStorage.setItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`, String(Date.now())); } catch {}
+      }
 
       await mutate(
         async () => {
@@ -113,6 +136,10 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
           if (result.success && result.data) {
             const filtered = result.data.filter(p => p.id !== transferredId);
             syncToLocalStorage(filtered);
+            // Clear dirty flag — server snapshot is now fresh
+            if (typeof window !== "undefined") {
+              try { localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`); } catch {}
+            }
             return filtered;
           }
           return optimisticPhones;

@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
       cache.invalidatePattern(`live:reparaciones:${tecnicoQuery}`);
     }
 
-    if (isLiveSnapshotEnabled()) {
+    // Only use live snapshot when NOT force-refreshing
+    // (refresh=1 means data changed, snapshot is stale — go to n8n for truth)
+    if (!forceRefresh && isLiveSnapshotEnabled()) {
       try {
         const liveData = await readLiveRepairsByTecnico(tecnicoQuery);
         if (liveData !== null && liveData.length > 0) {

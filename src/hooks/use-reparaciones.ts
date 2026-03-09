@@ -31,10 +31,25 @@ const reparacionesFetcher = async (url: string): Promise<ReparacionCliente[]> =>
   throw new Error(data.error || "Error al obtener reparaciones");
 };
 
+// Key for marking that data is dirty (mutation happened, server may have stale snapshot)
+const DIRTY_KEY_PREFIX = "reparaciones-dirty-";
+const DIRTY_TTL_MS = 60_000; // 60s window
+
 export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparacionesOptions) {
   const shouldFetch = autoFetch && tecnicoNombre;
+
+  // If a recent mutation happened, force server to bypass stale snapshot
+  const needsRefresh = (() => {
+    if (typeof window === "undefined" || !tecnicoNombre) return false;
+    try {
+      const dirtyAt = localStorage.getItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`);
+      if (dirtyAt && Date.now() - Number(dirtyAt) < DIRTY_TTL_MS) return true;
+    } catch {}
+    return false;
+  })();
+
   const url = shouldFetch
-    ? `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}`
+    ? `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}${needsRefresh ? "&refresh=1" : ""}`
     : null;
 
   // Load cached data for instant display
@@ -85,8 +100,24 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     } catch {}
   }, [tecnicoNombre]);
 
+  // Mark data as dirty so next page load uses refresh=1
+  const markDirty = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`, String(Date.now()));
+    } catch {}
+  }, [tecnicoNombre]);
+
+  const clearDirty = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`);
+    } catch {}
+  }, [tecnicoNombre]);
+
   // Remove items from both SWR cache and localStorage (for optimistic updates)
   const removeFromCache = useCallback((ids: string[]) => {
+    markDirty(); // Next page load will use refresh=1
     mutate(
       (current) => {
         const updated = current?.filter((r) => !ids.includes(r.id)) ?? [];
@@ -95,7 +126,7 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
       },
       { revalidate: false }
     );
-  }, [mutate, syncToLocalStorage]);
+  }, [mutate, syncToLocalStorage, markDirty]);
 
   // Force refresh bypasses server cache (for use after mutations)
   // excludeIds: items recently mutated that Monday might not have propagated yet
@@ -117,8 +148,9 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
       data = data.filter(r => !excludeIds.includes(r.id));
     }
     syncToLocalStorage(data);
+    clearDirty(); // Server snapshot is now fresh
     await mutate(data, { revalidate: false });
-  }, [tecnicoNombre, mutate, syncToLocalStorage]);
+  }, [tecnicoNombre, mutate, syncToLocalStorage, clearDirty]);
 
   // isSyncing = background update (not initial load)
   const isSyncing = isValidating && !isLoading && reparaciones.length > 0;
