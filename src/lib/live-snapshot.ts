@@ -20,7 +20,12 @@ function isMissingLiveSchemaError(error: unknown): boolean {
   return msg.includes("does not exist") || msg.includes("not found") || msg.includes(LIVE_SCHEMA_HINT);
 }
 
-export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<Phone[] | null> {
+export interface LiveReadResult<T> {
+  data: T[];
+  isStale: boolean;
+}
+
+export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<LiveReadResult<Phone> | null> {
   try {
     const supabase = getSupabaseServer();
     const { data, error } = await supabase
@@ -36,18 +41,18 @@ export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<Ph
 
     if (!data || data.length === 0) return null;
 
-    // Check staleness - if newest entry is too old, skip live data
+    // Check staleness — caller decides whether to serve stale data
     const newestAt = new Date(data[0].updated_at).getTime();
-    if (Date.now() - newestAt > LIVE_MAX_AGE_MS) return null;
+    const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
 
-    return data.map((row) => row.payload as Phone);
+    return { data: data.map((row) => row.payload as Phone), isStale };
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;
   }
 }
 
-export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<ReparacionCliente[] | null> {
+export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<LiveReadResult<ReparacionCliente> | null> {
   try {
     const supabase = getSupabaseServer();
     const { data, error } = await supabase
@@ -63,11 +68,11 @@ export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<R
 
     if (!data || data.length === 0) return null;
 
-    // Check staleness - if newest entry is too old, skip live data
+    // Check staleness — caller decides whether to serve stale data
     const newestAt = new Date(data[0].updated_at).getTime();
-    if (Date.now() - newestAt > LIVE_MAX_AGE_MS) return null;
+    const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
 
-    return data.map((row) => row.payload as ReparacionCliente);
+    return { data: data.map((row) => row.payload as ReparacionCliente), isStale };
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;

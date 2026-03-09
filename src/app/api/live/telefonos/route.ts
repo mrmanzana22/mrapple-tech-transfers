@@ -74,13 +74,25 @@ export async function GET(request: NextRequest) {
     // (refresh=1 means data changed, snapshot is stale — go to n8n for truth)
     if (!forceRefresh && isLiveSnapshotEnabled()) {
       try {
-        const liveData = await readLivePhonesByTecnico(tecnicoQuery);
-        if (liveData !== null && liveData.length > 0) {
-          cache.set(cacheKey, liveData, CACHE_TTL.TELEFONOS);
-          cache.set(staleKey, liveData, STALE_TTL_MS);
-          const res = NextResponse.json(liveData);
+        const liveResult = await readLivePhonesByTecnico(tecnicoQuery);
+        if (liveResult !== null && liveResult.data.length > 0) {
+          cache.set(cacheKey, liveResult.data, CACHE_TTL.TELEFONOS);
+          cache.set(staleKey, liveResult.data, STALE_TTL_MS);
+
+          // Stale-while-revalidate: serve stale data immediately, refresh in background
+          if (liveResult.isStale) {
+            fetchPhonesFromN8n(tecnicoQuery).then((n8nData) => {
+              cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
+              cache.set(staleKey, n8nData, STALE_TTL_MS);
+              upsertLivePhones(n8nData as Phone[]).then(() => refreshTeamSummary()).catch((e) => {
+                console.error("stale-refresh phones upsert error:", e);
+              });
+            }).catch((e) => console.error("stale-refresh phones n8n error:", e));
+          }
+
+          const res = NextResponse.json(liveResult.data);
           res.headers.set("X-Cache", "MISS");
-          res.headers.set("X-Data-Source", "live");
+          res.headers.set("X-Data-Source", liveResult.isStale ? "live-stale" : "live");
           return addCorsHeaders(res, request);
         }
       } catch (error) {
