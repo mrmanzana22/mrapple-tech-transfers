@@ -77,16 +77,48 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     await mutate();
   }, [mutate]);
 
+  // Helper: sync data to localStorage so next page load has correct fallback
+  const syncToLocalStorage = useCallback((data: ReparacionCliente[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(`reparaciones-${tecnicoNombre}`, JSON.stringify(data));
+    } catch {}
+  }, [tecnicoNombre]);
+
+  // Remove items from both SWR cache and localStorage (for optimistic updates)
+  const removeFromCache = useCallback((ids: string[]) => {
+    mutate(
+      (current) => {
+        const updated = current?.filter((r) => !ids.includes(r.id)) ?? [];
+        syncToLocalStorage(updated);
+        return updated;
+      },
+      { revalidate: false }
+    );
+  }, [mutate, syncToLocalStorage]);
+
   // Force refresh bypasses server cache (for use after mutations)
   // excludeIds: items recently mutated that Monday might not have propagated yet
   const forceRefresh = useCallback(async (excludeIds?: string[]) => {
+    // Immediately remove excluded items from localStorage
+    if (excludeIds?.length && typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`reparaciones-${tecnicoNombre}`);
+        if (cached) {
+          const parsed: ReparacionCliente[] = JSON.parse(cached);
+          syncToLocalStorage(parsed.filter(r => !excludeIds.includes(r.id)));
+        }
+      } catch {}
+    }
+
     const refreshUrl = `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}&refresh=1`;
     let data = await reparacionesFetcher(refreshUrl);
     if (excludeIds?.length) {
       data = data.filter(r => !excludeIds.includes(r.id));
     }
+    syncToLocalStorage(data);
     await mutate(data, { revalidate: false });
-  }, [tecnicoNombre, mutate]);
+  }, [tecnicoNombre, mutate, syncToLocalStorage]);
 
   // isSyncing = background update (not initial load)
   const isSyncing = isValidating && !isLoading && reparaciones.length > 0;
@@ -98,6 +130,7 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     error: error?.message || null,
     refresh,
     forceRefresh,
+    removeFromCache,
     mutate,
   };
 }

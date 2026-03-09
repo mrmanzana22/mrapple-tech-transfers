@@ -72,6 +72,7 @@ export default function TecnicoPage() {
     isLoading: reparacionesLoading,
     refresh: refreshReparaciones,
     forceRefresh: forceRefreshReparaciones,
+    removeFromCache: removeReparacionesFromCache,
     mutate: mutateReparaciones,
   } = useReparaciones({
     tecnicoNombre: tecnico?.nombre || "",
@@ -355,11 +356,8 @@ export default function TecnicoPage() {
       );
       if (response.success) {
         toast.success("Estado actualizado a Reparado oficina");
-        // Optimistic: update local state, then revalidate in background
-        mutateReparaciones(
-          (current) => current?.filter((r) => r.id !== reparacion.id),
-          { revalidate: false }
-        );
+        // Remove from SWR + localStorage so page navigation shows correct data
+        removeReparacionesFromCache([reparacion.id]);
         // Exclude this item from refresh to prevent reappearing before Monday propagates
         setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
@@ -382,10 +380,7 @@ export default function TecnicoPage() {
       );
       if (response.success) {
         toast.success("Equipo marcado como no reparado");
-        mutateReparaciones(
-          (current) => current?.filter((r) => r.id !== reparacion.id),
-          { revalidate: false }
-        );
+        removeReparacionesFromCache([reparacion.id]);
         setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
         toast.error(response.error || "Error al actualizar");
@@ -410,11 +405,8 @@ export default function TecnicoPage() {
   const handleTransferReparacionConfirm = useCallback(
     async (payload: TransferPayload) => {
       try {
-        // Optimistic: remove from list immediately
-        mutateReparaciones(
-          (current) => current?.filter((r) => r.id !== payload.item_id),
-          { revalidate: false }
-        );
+        // Remove from SWR + localStorage so page navigation shows correct data
+        removeReparacionesFromCache([payload.item_id]);
 
         const response = await transferirReparacion({
           item_id: payload.item_id,
@@ -440,7 +432,7 @@ export default function TecnicoPage() {
         throw err;
       }
     },
-    [handleReparacionModalClose, mutateReparaciones, forceRefreshReparaciones]
+    [handleReparacionModalClose, removeReparacionesFromCache, forceRefreshReparaciones, mutateReparaciones]
   );
 
   // Get estado badge color

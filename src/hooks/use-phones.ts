@@ -71,15 +71,28 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     await mutate();
   }, [mutate]);
 
+  // Helper: sync data to localStorage so next page load has correct fallback
+  const syncToLocalStorage = useCallback((data: Phone[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`phones-${tecnicoNombre}`, JSON.stringify(data));
+    } catch {}
+  }, [tecnicoNombre]);
+
   const transfer = useCallback(
     async (payload: TransferPayload): Promise<void> => {
       // Optimistic update: remove the phone from the list immediately
       const optimisticPhones = phones.filter((p) => p.id !== payload.item_id);
 
+      // Sync localStorage immediately so page navigation shows correct data
+      syncToLocalStorage(optimisticPhones);
+
       await mutate(
         async () => {
           const result = await transferPhone(payload);
           if (!result.success) {
+            // Rollback localStorage on error
+            syncToLocalStorage(phones);
             throw new Error(result.error || "Error al transferir");
           }
           return optimisticPhones;
@@ -98,13 +111,15 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
         mutate(async () => {
           const result = await getPhonesByTecnico(tecnicoNombre, true);
           if (result.success && result.data) {
-            return result.data.filter(p => p.id !== transferredId);
+            const filtered = result.data.filter(p => p.id !== transferredId);
+            syncToLocalStorage(filtered);
+            return filtered;
           }
           return optimisticPhones;
         }, { revalidate: false });
       }, 2000);
     },
-    [phones, mutate, tecnicoNombre]
+    [phones, mutate, tecnicoNombre, syncToLocalStorage]
   );
 
   // isSyncing = está actualizando en background (no es carga inicial)
