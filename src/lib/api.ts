@@ -129,21 +129,10 @@ export interface TecnicoWithPhones {
 }
 
 export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]> {
+  // Use resumen for technician names, but always fetch actual phones per-technician
+  // (resumen phonesCount can be stale when items are in shared groups like "Reparaciones Generales")
   const resumen = await getEquipoResumen();
 
-  // Trust resumen only if it has real data (at least one non-zero count)
-  const hasRealData = resumen.success && resumen.data && resumen.data.length > 0 &&
-    resumen.data.some(r => r.phonesCount > 0 || r.repairsCount > 0);
-
-  if (hasRealData) {
-    return resumen.data!.map((row) => ({
-      nombre: row.tecnico,
-      phones: [],
-      phonesCount: row.phonesCount,
-    }));
-  }
-
-  // Get technician names from resumen (if available) or from API
   const tecnicos = (resumen.success && resumen.data && resumen.data.length > 0)
     ? resumen.data.map(r => r.tecnico)
     : await fetchTecnicosActivos();
