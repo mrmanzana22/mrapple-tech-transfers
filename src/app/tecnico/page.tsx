@@ -176,9 +176,8 @@ export default function TecnicoPage() {
 
     const tecnicoData = teamData.find((t) => t.nombre === nombre);
     const alreadyLoaded = (tecnicoData?.phones?.length || 0) > 0;
-    const expectedCount = tecnicoData?.phonesCount ?? 0;
 
-    if (alreadyLoaded || expectedCount === 0) return;
+    if (alreadyLoaded) return;
 
     setLoadingTeamPhones((prev) => {
       const next = new Set(prev);
