@@ -25,6 +25,22 @@ export interface LiveReadResult<T> {
   isStale: boolean;
 }
 
+// Helper: check if a technician exists in team_summary (means they were synced)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function readTecnicoSummary(supabase: any, tecnicoNombre: string): Promise<TeamSummaryRow | null> {
+  try {
+    const { data, error } = await supabase
+      .from("mrapple_live_team_summary")
+      .select("tecnico_nombre, phones_count, repairs_count, updated_at")
+      .eq("tecnico_nombre", tecnicoNombre)
+      .single();
+    if (error || !data) return null;
+    return data as TeamSummaryRow;
+  } catch {
+    return null;
+  }
+}
+
 export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<LiveReadResult<Phone> | null> {
   try {
     const supabase = getSupabaseServer();
@@ -39,13 +55,20 @@ export async function readLivePhonesByTecnico(tecnicoNombre: string): Promise<Li
       throw error;
     }
 
-    if (!data || data.length === 0) return null;
+    if (data && data.length > 0) {
+      const newestAt = new Date(data[0].updated_at).getTime();
+      const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
+      return { data: data.map((row) => row.payload as Phone), isStale };
+    }
 
-    // Check staleness — caller decides whether to serve stale data
-    const newestAt = new Date(data[0].updated_at).getTime();
-    const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
+    // No phone rows — check team_summary to know if this tech was synced with 0 phones
+    const summary = await readTecnicoSummary(supabase, tecnicoNombre);
+    if (summary) {
+      const isStale = Date.now() - new Date(summary.updated_at).getTime() > LIVE_MAX_AGE_MS;
+      return { data: [], isStale };
+    }
 
-    return { data: data.map((row) => row.payload as Phone), isStale };
+    return null;
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;
@@ -66,13 +89,20 @@ export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<L
       throw error;
     }
 
-    if (!data || data.length === 0) return null;
+    if (data && data.length > 0) {
+      const newestAt = new Date(data[0].updated_at).getTime();
+      const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
+      return { data: data.map((row) => row.payload as ReparacionCliente), isStale };
+    }
 
-    // Check staleness — caller decides whether to serve stale data
-    const newestAt = new Date(data[0].updated_at).getTime();
-    const isStale = Date.now() - newestAt > LIVE_MAX_AGE_MS;
+    // No repair rows — check team_summary to know if this tech was synced with 0 repairs
+    const summary = await readTecnicoSummary(supabase, tecnicoNombre);
+    if (summary) {
+      const isStale = Date.now() - new Date(summary.updated_at).getTime() > LIVE_MAX_AGE_MS;
+      return { data: [], isStale };
+    }
 
-    return { data: data.map((row) => row.payload as ReparacionCliente), isStale };
+    return null;
   } catch (error) {
     if (isMissingLiveSchemaError(error)) return null;
     throw error;

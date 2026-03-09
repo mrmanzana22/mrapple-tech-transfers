@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (!forceRefresh && isLiveSnapshotEnabled()) {
       try {
         const liveResult = await readLiveRepairsByTecnico(tecnicoQuery);
-        if (liveResult !== null && liveResult.data.length > 0) {
+        if (liveResult !== null) {
           cache.set(cacheKey, liveResult.data, CACHE_TTL.REPARACIONES);
           cache.set(staleKey, liveResult.data, STALE_TTL_MS);
 
