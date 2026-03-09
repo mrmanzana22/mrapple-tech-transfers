@@ -79,8 +79,16 @@ export async function POST(req: NextRequest) {
     // Ownership check in Monday (phones board)
     const monday = await getOwnerTextForItem(itemId, OWNER_COLUMNS.PHONES);
     const currentOwner = (monday.ownerText ?? "").trim();
+    const sessionOwner = (session.monday_status_value || "").toUpperCase();
 
-    if (currentOwner.toUpperCase() !== (session.monday_status_value || "").toUpperCase()) {
+    let isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+
+    // Fallback: phones use group names like "JOCEBAN - MARZO 2026" instead of column
+    if (!isOwner && !currentOwner && monday.groupTitle) {
+      isOwner = monday.groupTitle.toUpperCase().startsWith(sessionOwner);
+    }
+
+    if (!isOwner) {
       const res = NextResponse.json(
         {
           success: false,
@@ -88,7 +96,7 @@ export async function POST(req: NextRequest) {
           error: "No eres el dueño de este teléfono",
           details: {
             item_id: itemId,
-            owner_actual: currentOwner,
+            owner_actual: currentOwner || `[group: ${monday.groupTitle}]`,
             owner_session: session.monday_status_value,
           },
         },

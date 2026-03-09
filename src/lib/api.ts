@@ -12,9 +12,9 @@ const { baseUrl: liveBaseUrl, endpoints: liveEndpoints } = config.live;
  * Gets phones assigned to a tecnico
  * Nota: Sin cache buster - SWR maneja la invalidación de cache
  */
-export async function getPhonesByTecnico(tecnicoNombre: string): Promise<ApiResponse<Phone[]>> {
+export async function getPhonesByTecnico(tecnicoNombre: string, forceRefresh = false): Promise<ApiResponse<Phone[]>> {
   try {
-    const url = `${liveBaseUrl}${liveEndpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}`;
+    const url = `${liveBaseUrl}${liveEndpoints.getPhones}?tecnico=${encodeURIComponent(tecnicoNombre)}${forceRefresh ? '&refresh=1' : ''}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -130,15 +130,24 @@ export interface TecnicoWithPhones {
 
 export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]> {
   const resumen = await getEquipoResumen();
-  if (resumen.success && resumen.data && resumen.data.length > 0) {
-    return resumen.data.map((row) => ({
+
+  // Trust resumen only if it has real data (at least one non-zero count)
+  const hasRealData = resumen.success && resumen.data && resumen.data.length > 0 &&
+    resumen.data.some(r => r.phonesCount > 0 || r.repairsCount > 0);
+
+  if (hasRealData) {
+    return resumen.data!.map((row) => ({
       nombre: row.tecnico,
       phones: [],
       phonesCount: row.phonesCount,
     }));
   }
 
-  const tecnicos = await fetchTecnicosActivos();
+  // Get technician names from resumen (if available) or from API
+  const tecnicos = (resumen.success && resumen.data && resumen.data.length > 0)
+    ? resumen.data.map(r => r.tecnico)
+    : await fetchTecnicosActivos();
+
   const results = await Promise.all(
     tecnicos.map(async (nombre) => {
       const response = await getPhonesByTecnico(nombre);
@@ -156,9 +165,9 @@ export async function fetchAllTecnicosWithPhones(): Promise<TecnicoWithPhones[]>
 /**
  * Gets reparaciones de clientes asignadas a un tecnico
  */
-export async function getReparacionesCliente(tecnico: string): Promise<ApiResponse<ReparacionCliente[]>> {
+export async function getReparacionesCliente(tecnico: string, forceRefresh = false): Promise<ApiResponse<ReparacionCliente[]>> {
   try {
-    const url = `${liveBaseUrl}${liveEndpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}`;
+    const url = `${liveBaseUrl}${liveEndpoints.reparaciones}?tecnico=${encodeURIComponent(tecnico)}${forceRefresh ? '&refresh=1' : ''}`;
     const response = await fetch(url, {
       credentials: "include",
       headers: { "X-Requested-With": "mrapple" },

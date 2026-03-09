@@ -71,6 +71,7 @@ export default function TecnicoPage() {
     reparaciones,
     isLoading: reparacionesLoading,
     refresh: refreshReparaciones,
+    forceRefresh: forceRefreshReparaciones,
     mutate: mutateReparaciones,
   } = useReparaciones({
     tecnicoNombre: tecnico?.nombre || "",
@@ -359,7 +360,7 @@ export default function TecnicoPage() {
           (current) => current?.filter((r) => r.id !== reparacion.id),
           { revalidate: false }
         );
-        setTimeout(() => mutateReparaciones(), 1500);
+        setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
       } else {
         toast.error(response.error || "Error al actualizar");
       }
@@ -384,7 +385,7 @@ export default function TecnicoPage() {
           (current) => current?.filter((r) => r.id !== reparacion.id),
           { revalidate: false }
         );
-        setTimeout(() => mutateReparaciones(), 1500);
+        setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
       } else {
         toast.error(response.error || "Error al actualizar");
       }
@@ -427,7 +428,7 @@ export default function TecnicoPage() {
           toast.success("Reparación transferida correctamente");
           handleReparacionModalClose();
           // Soft revalidate in background
-          setTimeout(() => mutateReparaciones(), 1500);
+          setTimeout(() => forceRefreshReparaciones().catch(() => {}), 1500);
         } else {
           // Rollback on error
           mutateReparaciones();
@@ -438,7 +439,7 @@ export default function TecnicoPage() {
         throw err;
       }
     },
-    [handleReparacionModalClose, mutateReparaciones]
+    [handleReparacionModalClose, mutateReparaciones, forceRefreshReparaciones]
   );
 
   // Get estado badge color

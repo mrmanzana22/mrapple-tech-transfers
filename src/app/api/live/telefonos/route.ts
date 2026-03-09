@@ -53,14 +53,21 @@ export async function GET(request: NextRequest) {
       tecnicoQuery = session.nombre;
     }
 
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
     const cacheKey = `live:telefonos:${tecnicoQuery}`;
     const staleKey = `${cacheKey}:stale`;
-    const cached = cache.get<unknown[]>(cacheKey);
-    if (cached) {
-      const res = NextResponse.json(cached);
-      res.headers.set("X-Cache", "HIT");
-      res.headers.set("X-Data-Source", "live-cache");
-      return addCorsHeaders(res, request);
+
+    if (!forceRefresh) {
+      const cached = cache.get<unknown[]>(cacheKey);
+      if (cached) {
+        const res = NextResponse.json(cached);
+        res.headers.set("X-Cache", "HIT");
+        res.headers.set("X-Data-Source", "live-cache");
+        return addCorsHeaders(res, request);
+      }
+    } else {
+      // Clear this instance's cache so fresh data gets stored
+      cache.invalidatePattern(`live:telefonos:${tecnicoQuery}`);
     }
 
     if (isLiveSnapshotEnabled()) {

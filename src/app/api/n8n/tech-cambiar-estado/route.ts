@@ -77,8 +77,16 @@ export async function POST(req: NextRequest) {
     // Ownership check in Monday (repairs board)
     const monday = await getOwnerTextForItem(itemId, OWNER_COLUMNS.REPAIRS);
     const currentOwner = (monday.ownerText ?? "").trim();
+    const sessionOwner = (session.monday_status_value || "").toUpperCase();
 
-    if (currentOwner.toUpperCase() !== (session.monday_status_value || "").toUpperCase()) {
+    let isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+
+    // Fallback: if estado_1 column is empty, check group title
+    if (!isOwner && !currentOwner && monday.groupTitle) {
+      isOwner = monday.groupTitle.toUpperCase().startsWith(sessionOwner);
+    }
+
+    if (!isOwner) {
       const res = NextResponse.json(
         {
           success: false,
@@ -86,7 +94,7 @@ export async function POST(req: NextRequest) {
           error: "No eres el dueño de esta reparación",
           details: {
             item_id: itemId,
-            owner_actual: currentOwner,
+            owner_actual: currentOwner || `[group: ${monday.groupTitle}]`,
             owner_session: session.monday_status_value,
           },
         },

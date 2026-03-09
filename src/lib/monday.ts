@@ -5,6 +5,7 @@ export type MondayOwnerResult = {
   itemId: string;
   itemName: string;
   ownerText: string | null;
+  groupTitle: string | null;
 };
 
 const MONDAY_API_URL = "https://api.monday.com/v2";
@@ -56,6 +57,9 @@ export async function getOwnerTextForItem(
           id
           text
         }
+        group {
+          title
+        }
       }
     }
   `;
@@ -65,6 +69,7 @@ export async function getOwnerTextForItem(
       id: string;
       name: string;
       column_values: Array<{ id: string; text: string | null }>;
+      group: { title: string } | null;
     }>;
   };
 
@@ -75,7 +80,7 @@ export async function getOwnerTextForItem(
 
   const item = data.items?.[0];
   if (!item) {
-    return { itemId, itemName: "", ownerText: null };
+    return { itemId, itemName: "", ownerText: null, groupTitle: null };
   }
 
   const owner = item.column_values?.find((c) => c.id === ownerColumnId);
@@ -83,6 +88,7 @@ export async function getOwnerTextForItem(
     itemId: item.id,
     itemName: item.name,
     ownerText: owner?.text ?? null,
+    groupTitle: item.group?.title ?? null,
   };
 }
 

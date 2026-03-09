@@ -91,10 +91,16 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
         }
       );
 
-      // Revalidate suave en background (después de 1.5s)
-      setTimeout(() => mutate(), 1500);
+      // Revalidate with forced refresh to bypass other Vercel instances' cache
+      setTimeout(() => {
+        mutate(async () => {
+          const result = await getPhonesByTecnico(tecnicoNombre, true);
+          if (result.success && result.data) return result.data;
+          return optimisticPhones;
+        }, { revalidate: false });
+      }, 1500);
     },
-    [phones, mutate]
+    [phones, mutate, tecnicoNombre]
   );
 
   // isSyncing = está actualizando en background (no es carga inicial)

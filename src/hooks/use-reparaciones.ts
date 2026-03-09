@@ -77,6 +77,13 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     await mutate();
   }, [mutate]);
 
+  // Force refresh bypasses server cache (for use after mutations)
+  const forceRefresh = useCallback(async () => {
+    const refreshUrl = `/api/live/reparaciones?tecnico=${encodeURIComponent(tecnicoNombre)}&refresh=1`;
+    const data = await reparacionesFetcher(refreshUrl);
+    await mutate(data, { revalidate: false });
+  }, [tecnicoNombre, mutate]);
+
   // isSyncing = background update (not initial load)
   const isSyncing = isValidating && !isLoading && reparaciones.length > 0;
 
@@ -86,6 +93,7 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     isSyncing,
     error: error?.message || null,
     refresh,
+    forceRefresh,
     mutate,
   };
 }
