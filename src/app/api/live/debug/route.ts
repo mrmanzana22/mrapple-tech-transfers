@@ -51,6 +51,6 @@ export async function GET(request: NextRequest) {
       data: summary.data,
       error: summary.error?.message,
     },
-    allPhoneTecnicos: [...new Set(allPhoneTecnicos.data?.map(r => r.tecnico_nombre) || [])],
+    allPhoneTecnicos: Array.from(new Set(allPhoneTecnicos.data?.map(r => r.tecnico_nombre) || [])),
   });
 }
