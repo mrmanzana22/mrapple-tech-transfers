@@ -100,15 +100,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Stale in-memory cache: serve immediately, refresh in background
+    const staleData = cache.get<unknown[]>(staleKey);
+    if (staleData) {
+      cache.set(cacheKey, staleData, CACHE_TTL.TELEFONOS);
+      // Background refresh: n8n → caches + snapshot
+      fetchPhonesFromN8n(tecnicoQuery).then(async (n8nData) => {
+        cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
+        cache.set(staleKey, n8nData, STALE_TTL_MS);
+        if (isLiveSnapshotEnabled()) {
+          try { await upsertLivePhones(n8nData as Phone[]); await refreshTeamSummary(); } catch {}
+        }
+      }).catch(() => {});
+      const res = NextResponse.json(staleData);
+      res.headers.set("X-Cache", "STALE");
+      res.headers.set("X-Data-Source", "stale-swr");
+      return addCorsHeaders(res, request);
+    }
+
     try {
       const n8nData = await fetchPhonesFromN8n(tecnicoQuery) as Phone[];
       cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
       cache.set(staleKey, n8nData, STALE_TTL_MS);
 
+      // Await upsert to guarantee snapshot is populated
       if (isLiveSnapshotEnabled()) {
-        upsertLivePhones(n8nData).then(() => refreshTeamSummary()).catch((error) => {
+        try {
+          await upsertLivePhones(n8nData);
+          await refreshTeamSummary();
+        } catch (error) {
           console.error("live phones upsert error:", error);
-        });
+        }
       }
 
       const res = NextResponse.json(n8nData);
@@ -117,13 +139,6 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(res, request);
     } catch (error) {
       console.error("live phones n8n fallback error:", error);
-      const stale = cache.get<unknown[]>(staleKey);
-      if (stale) {
-        const res = NextResponse.json(stale);
-        res.headers.set("X-Cache", "STALE");
-        res.headers.set("X-Data-Source", "stale-cache");
-        return addCorsHeaders(res, request);
-      }
 
       // Final fail-open fallback for UX: avoid blocking the page with 502s.
       const res = NextResponse.json([]);

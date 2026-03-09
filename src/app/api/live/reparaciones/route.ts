@@ -99,15 +99,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Stale in-memory cache: serve immediately, refresh in background
+    const staleData = cache.get<unknown[]>(staleKey);
+    if (staleData) {
+      cache.set(cacheKey, staleData, CACHE_TTL.REPARACIONES);
+      // Background refresh: n8n → caches + snapshot
+      fetchRepairsFromN8n(tecnicoQuery).then(async (n8nData) => {
+        cache.set(cacheKey, n8nData, CACHE_TTL.REPARACIONES);
+        cache.set(staleKey, n8nData, STALE_TTL_MS);
+        if (isLiveSnapshotEnabled()) {
+          try {
+            await upsertLiveRepairs(n8nData as ReparacionCliente[], undefined, { cleanupTecnico: tecnicoQuery });
+            await refreshTeamSummary();
+          } catch {}
+        }
+      }).catch(() => {});
+      const res = NextResponse.json(staleData);
+      res.headers.set("X-Cache", "STALE");
+      res.headers.set("X-Data-Source", "stale-swr");
+      return addCorsHeaders(res, request);
+    }
+
     try {
       const n8nData = await fetchRepairsFromN8n(tecnicoQuery) as ReparacionCliente[];
       cache.set(cacheKey, n8nData, CACHE_TTL.REPARACIONES);
       cache.set(staleKey, n8nData, STALE_TTL_MS);
 
+      // Await upsert to guarantee snapshot is populated
       if (isLiveSnapshotEnabled()) {
-        upsertLiveRepairs(n8nData, undefined, { cleanupTecnico: tecnicoQuery }).then(() => refreshTeamSummary()).catch((error) => {
+        try {
+          await upsertLiveRepairs(n8nData, undefined, { cleanupTecnico: tecnicoQuery });
+          await refreshTeamSummary();
+        } catch (error) {
           console.error("live repairs upsert error:", error);
-        });
+        }
       }
 
       const res = NextResponse.json(n8nData);
@@ -116,13 +141,6 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(res, request);
     } catch (error) {
       console.error("live repairs n8n fallback error:", error);
-      const stale = cache.get<unknown[]>(staleKey);
-      if (stale) {
-        const res = NextResponse.json(stale);
-        res.headers.set("X-Cache", "STALE");
-        res.headers.set("X-Data-Source", "stale-cache");
-        return addCorsHeaders(res, request);
-      }
 
       // Final fail-open fallback for UX: avoid blocking the page with 502s.
       const res = NextResponse.json([]);
