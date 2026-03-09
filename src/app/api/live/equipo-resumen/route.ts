@@ -35,9 +35,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const liveSummary = await readTeamSummary();
-    if (liveSummary && liveSummary.length) {
+    // Only use live summary if it's fresh (less than 10 minutes old)
+    const MAX_SUMMARY_AGE_MS = 10 * 60 * 1000;
+    const isFresh = liveSummary && liveSummary.length > 0 &&
+      liveSummary.some((row) => {
+        const age = Date.now() - new Date(row.updated_at).getTime();
+        return age < MAX_SUMMARY_AGE_MS;
+      });
+
+    if (isFresh) {
       const res = NextResponse.json(
-        liveSummary.map((row) => ({
+        liveSummary!.map((row) => ({
           tecnico: row.tecnico_nombre,
           phonesCount: row.phones_count,
           repairsCount: row.repairs_count,

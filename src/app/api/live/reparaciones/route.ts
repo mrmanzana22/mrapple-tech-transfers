@@ -6,7 +6,7 @@ import { isLiveSnapshotEnabled, readLiveRepairsByTecnico, upsertLiveRepairs, ref
 import type { ReparacionCliente } from "@/types";
 
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || "https://appn8n-n8n.lx6zon.easypanel.host/webhook";
-const N8N_TIMEOUT_MS = 6000;
+const N8N_TIMEOUT_MS = 20000;
 const STALE_TTL_MS = 5 * 60 * 1000;
 
 async function fetchRepairsFromN8n(tecnicoQuery: string): Promise<unknown[]> {
