@@ -71,8 +71,9 @@ export async function POST(request: NextRequest) {
         fetchArray(`${N8N_BASE}/tech-telefonos?tecnico=${encodeURIComponent(tecnico)}`),
         fetchArray(`${N8N_BASE}/tech-reparaciones?tecnico=${encodeURIComponent(tecnico)}`),
       ]);
-      phones.push(...(p as Phone[]));
-      repairs.push(...(r as ReparacionCliente[]));
+      // Ensure tecnico field is set (n8n may return empty for shared-group items)
+      phones.push(...(p as Phone[]).map(ph => ({ ...ph, tecnico: ph.tecnico || tecnico })));
+      repairs.push(...(r as ReparacionCliente[]).map(rp => ({ ...rp, asignado_a: rp.asignado_a || tecnico })));
     }
 
     await Promise.all([

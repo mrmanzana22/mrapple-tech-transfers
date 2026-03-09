@@ -81,10 +81,11 @@ export async function GET(request: NextRequest) {
 
           // Stale-while-revalidate: serve stale data immediately, refresh in background
           if (liveResult.isStale) {
-            fetchPhonesFromN8n(tecnicoQuery).then((n8nData) => {
-              cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
-              cache.set(staleKey, n8nData, STALE_TTL_MS);
-              upsertLivePhones(n8nData as Phone[]).then(() => refreshTeamSummary()).catch((e) => {
+            fetchPhonesFromN8n(tecnicoQuery).then((raw) => {
+              const fresh = (raw as Phone[]).map(p => ({ ...p, tecnico: p.tecnico || tecnicoQuery }));
+              cache.set(cacheKey, fresh, CACHE_TTL.TELEFONOS);
+              cache.set(staleKey, fresh, STALE_TTL_MS);
+              upsertLivePhones(fresh).then(() => refreshTeamSummary()).catch((e) => {
                 console.error("stale-refresh phones upsert error:", e);
               });
             }).catch((e) => console.error("stale-refresh phones n8n error:", e));
@@ -105,11 +106,12 @@ export async function GET(request: NextRequest) {
     if (staleData) {
       cache.set(cacheKey, staleData, CACHE_TTL.TELEFONOS);
       // Background refresh: n8n → caches + snapshot
-      fetchPhonesFromN8n(tecnicoQuery).then(async (n8nData) => {
-        cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
-        cache.set(staleKey, n8nData, STALE_TTL_MS);
+      fetchPhonesFromN8n(tecnicoQuery).then(async (raw) => {
+        const fresh = (raw as Phone[]).map(p => ({ ...p, tecnico: p.tecnico || tecnicoQuery }));
+        cache.set(cacheKey, fresh, CACHE_TTL.TELEFONOS);
+        cache.set(staleKey, fresh, STALE_TTL_MS);
         if (isLiveSnapshotEnabled()) {
-          try { await upsertLivePhones(n8nData as Phone[]); await refreshTeamSummary(); } catch {}
+          try { await upsertLivePhones(fresh); await refreshTeamSummary(); } catch {}
         }
       }).catch(() => {});
       const res = NextResponse.json(staleData);
@@ -119,7 +121,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const n8nData = await fetchPhonesFromN8n(tecnicoQuery) as Phone[];
+      const rawN8n = await fetchPhonesFromN8n(tecnicoQuery) as Phone[];
+      // Ensure tecnico field is set (n8n may return empty for shared-group items)
+      const n8nData = rawN8n.map(p => ({ ...p, tecnico: p.tecnico || tecnicoQuery }));
       cache.set(cacheKey, n8nData, CACHE_TTL.TELEFONOS);
       cache.set(staleKey, n8nData, STALE_TTL_MS);
 

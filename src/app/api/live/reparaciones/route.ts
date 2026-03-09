@@ -80,10 +80,11 @@ export async function GET(request: NextRequest) {
 
           // Stale-while-revalidate: serve stale data immediately, refresh in background
           if (liveResult.isStale) {
-            fetchRepairsFromN8n(tecnicoQuery).then((n8nData) => {
-              cache.set(cacheKey, n8nData, CACHE_TTL.REPARACIONES);
-              cache.set(staleKey, n8nData, STALE_TTL_MS);
-              upsertLiveRepairs(n8nData as ReparacionCliente[], undefined, { cleanupTecnico: tecnicoQuery })
+            fetchRepairsFromN8n(tecnicoQuery).then((raw) => {
+              const fresh = (raw as ReparacionCliente[]).map(r => ({ ...r, asignado_a: r.asignado_a || tecnicoQuery }));
+              cache.set(cacheKey, fresh, CACHE_TTL.REPARACIONES);
+              cache.set(staleKey, fresh, STALE_TTL_MS);
+              upsertLiveRepairs(fresh, undefined, { cleanupTecnico: tecnicoQuery })
                 .then(() => refreshTeamSummary())
                 .catch((e) => console.error("stale-refresh repairs upsert error:", e));
             }).catch((e) => console.error("stale-refresh repairs n8n error:", e));
@@ -104,12 +105,13 @@ export async function GET(request: NextRequest) {
     if (staleData) {
       cache.set(cacheKey, staleData, CACHE_TTL.REPARACIONES);
       // Background refresh: n8n → caches + snapshot
-      fetchRepairsFromN8n(tecnicoQuery).then(async (n8nData) => {
-        cache.set(cacheKey, n8nData, CACHE_TTL.REPARACIONES);
-        cache.set(staleKey, n8nData, STALE_TTL_MS);
+      fetchRepairsFromN8n(tecnicoQuery).then(async (raw) => {
+        const fresh = (raw as ReparacionCliente[]).map(r => ({ ...r, asignado_a: r.asignado_a || tecnicoQuery }));
+        cache.set(cacheKey, fresh, CACHE_TTL.REPARACIONES);
+        cache.set(staleKey, fresh, STALE_TTL_MS);
         if (isLiveSnapshotEnabled()) {
           try {
-            await upsertLiveRepairs(n8nData as ReparacionCliente[], undefined, { cleanupTecnico: tecnicoQuery });
+            await upsertLiveRepairs(fresh, undefined, { cleanupTecnico: tecnicoQuery });
             await refreshTeamSummary();
           } catch {}
         }
@@ -121,7 +123,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const n8nData = await fetchRepairsFromN8n(tecnicoQuery) as ReparacionCliente[];
+      const rawN8n = await fetchRepairsFromN8n(tecnicoQuery) as ReparacionCliente[];
+      // Ensure asignado_a field is set (n8n may return empty for some items)
+      const n8nData = rawN8n.map(r => ({ ...r, asignado_a: r.asignado_a || tecnicoQuery }));
       cache.set(cacheKey, n8nData, CACHE_TTL.REPARACIONES);
       cache.set(staleKey, n8nData, STALE_TTL_MS);
 
