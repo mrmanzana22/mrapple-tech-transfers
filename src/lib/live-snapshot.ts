@@ -131,6 +131,25 @@ export async function upsertLivePhones(phones: Phone[], sourceTs?: string): Prom
   }
 }
 
+// Remove a single repair from the snapshot by item_id.
+// Used right after a mutation succeeds, so a racing n8n refresh (triggered
+// while Monday hasn't propagated yet) can't re-insert the stale row.
+export async function deleteLiveRepair(itemId: string): Promise<void> {
+  try {
+    const supabase = getSupabaseServer();
+    const { error } = await supabase
+      .from("mrapple_live_repairs")
+      .delete()
+      .eq("item_id", String(itemId));
+    if (error && !isMissingLiveSchemaError(error.message)) {
+      throw error;
+    }
+  } catch (error) {
+    if (isMissingLiveSchemaError(error)) return;
+    throw error;
+  }
+}
+
 export async function upsertLiveRepairs(
   repairs: ReparacionCliente[],
   sourceTs?: string,

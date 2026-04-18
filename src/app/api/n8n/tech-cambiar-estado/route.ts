@@ -12,6 +12,7 @@ import {
   markIdempotencyFailed,
 } from "@/lib/idempotency";
 import { cache } from "@/lib/cache";
+import { deleteLiveRepair } from "@/lib/live-snapshot";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -129,6 +130,13 @@ export async function POST(req: NextRequest) {
       await markIdempotencySuccess(requestId, "repair_status", json);
       // Invalidate reparaciones cache
       cache.invalidatePattern("reparaciones:");
+      // Drop the mutated item from the live snapshot so a racing refresh
+      // (Monday not yet propagated) can't leave a stale row behind.
+      try {
+        await deleteLiveRepair(itemId);
+      } catch (e) {
+        console.error("deleteLiveRepair after cambiar-estado:", e);
+      }
     } else {
       await markIdempotencyFailed(requestId, "repair_status", json);
     }
