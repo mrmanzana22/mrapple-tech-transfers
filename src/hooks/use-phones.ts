@@ -15,6 +15,35 @@ interface UsePhonesOptions {
 const DIRTY_KEY_PREFIX = "phones-dirty-";
 const DIRTY_TTL_MS = 60_000; // 60s window
 
+// Ghost filter: hide recently transferred phone IDs from the UI for a short window
+// so polling/revalidation can't resurrect them before Monday/n8n/cache propagate.
+const RECENT_TRANSFERS_KEY_PREFIX = "phones-recent-transfers-";
+const RECENT_TRANSFER_TTL_MS = 120_000;
+
+type RecentTransfer = { id: string; at: number };
+
+function getRecentTransfers(tecnico: string): RecentTransfer[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`${RECENT_TRANSFERS_KEY_PREFIX}${tecnico}`);
+    if (!raw) return [];
+    const list: RecentTransfer[] = JSON.parse(raw);
+    const now = Date.now();
+    return list.filter((t) => now - t.at < RECENT_TRANSFER_TTL_MS);
+  } catch {
+    return [];
+  }
+}
+
+function addRecentTransfer(tecnico: string, id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getRecentTransfers(tecnico);
+    const updated = [...current.filter((t) => t.id !== id), { id, at: Date.now() }];
+    localStorage.setItem(`${RECENT_TRANSFERS_KEY_PREFIX}${tecnico}`, JSON.stringify(updated));
+  } catch {}
+}
+
 // Fetcher function for SWR
 const phonesFetcher = async (tecnicoNombre: string): Promise<Phone[]> => {
   // Check if there was a recent mutation — if so, bypass server snapshot
@@ -34,7 +63,8 @@ const phonesFetcher = async (tecnicoNombre: string): Promise<Phone[]> => {
     if (forceRefresh && typeof window !== "undefined") {
       try { localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`); } catch {}
     }
-    return result.data;
+    const recentIds = new Set(getRecentTransfers(tecnicoNombre).map((t) => t.id));
+    return result.data.filter((p) => !recentIds.has(String(p.id)));
   }
   throw new Error(result.error || "Error al obtener telefonos");
 };
@@ -63,10 +93,10 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     shouldFetch ? tecnicoNombre : null,
     phonesFetcher,
     {
-      revalidateOnFocus: false,          // Evita recargas costosas al cambiar de tab/ventana
+      revalidateOnFocus: true,
       revalidateOnReconnect: true,
       dedupingInterval: config.intervals.deduping,
-      refreshInterval: 0,                // Manual refresh para priorizar velocidad percibida
+      refreshInterval: config.intervals.polling,
       refreshWhenHidden: false,
       keepPreviousData: true,
       shouldRetryOnError: false,         // Evita quedarse en loading varios segundos por reintentos
@@ -100,6 +130,10 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
 
   const transfer = useCallback(
     async (payload: TransferPayload): Promise<void> => {
+      // Register in ghost filter before any fetch fires, so a concurrent revalidation
+      // can't resurrect this phone from a stale server/cache snapshot.
+      addRecentTransfer(tecnicoNombre, String(payload.item_id));
+
       // Optimistic update: remove the phone from the list immediately
       const optimisticPhones = phones.filter((p) => p.id !== payload.item_id);
 

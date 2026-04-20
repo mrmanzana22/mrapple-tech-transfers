@@ -12,6 +12,7 @@ import {
   markIdempotencyFailed,
 } from "@/lib/idempotency";
 import { cache } from "@/lib/cache";
+import { getSupabaseServer } from "@/lib/supabase-server";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -145,6 +146,37 @@ export async function POST(req: NextRequest) {
       await markIdempotencySuccess(requestId, "transfer_phone", json);
       // Invalidate cache for both origin and destination tecnico
       cache.invalidatePattern("telefonos:");
+
+      // Sync live snapshot immediately so the receiver's next poll sees the phone
+      // under the new owner without waiting for a background n8n resync.
+      const nuevoTecnicoName = String(form.get("nuevo_tecnico") ?? "").trim();
+      if (nuevoTecnicoName) {
+        try {
+          const supabase = getSupabaseServer();
+          const { data: existing } = await supabase
+            .from("mrapple_live_phones")
+            .select("payload")
+            .eq("item_id", itemId)
+            .maybeSingle();
+
+          if (existing?.payload) {
+            const newPayload = {
+              ...(existing.payload as Record<string, unknown>),
+              tecnico: nuevoTecnicoName,
+            };
+            await supabase
+              .from("mrapple_live_phones")
+              .update({
+                tecnico_nombre: nuevoTecnicoName,
+                payload: newPayload,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("item_id", itemId);
+          }
+        } catch (e) {
+          console.error("live snapshot sync error (phones):", e);
+        }
+      }
     } else {
       await markIdempotencyFailed(requestId, "transfer_phone", json);
     }
