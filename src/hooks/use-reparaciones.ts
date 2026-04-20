@@ -71,8 +71,10 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     mutate,
   } = useSWR(url, reparacionesFetcher, {
     dedupingInterval: config.intervals.deduping,
-    revalidateOnFocus: false,        // Don't refetch on tab focus
+    revalidateOnFocus: true,         // Al volver al tab refresca (ver reparaciones recibidas)
     revalidateOnReconnect: true,
+    refreshInterval: config.intervals.polling,  // 30s - detecta reparaciones recibidas sin acción del usuario
+    refreshWhenHidden: false,        // no polling si el tab está oculto
     keepPreviousData: true,          // Show stale data while revalidating
     shouldRetryOnError: false,
     fallbackData: getFallbackData(),
