@@ -63,11 +63,11 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     shouldFetch ? tecnicoNombre : null,
     phonesFetcher,
     {
-      revalidateOnFocus: true,           // Al volver al tab refresca (ver transferencias entrantes)
+      revalidateOnFocus: false,          // Evita recargas costosas al cambiar de tab/ventana
       revalidateOnReconnect: true,
       dedupingInterval: config.intervals.deduping,
-      refreshInterval: config.intervals.polling,  // 30s - detecta celulares recibidos sin acción del usuario
-      refreshWhenHidden: false,          // no polling si el tab está oculto (ahorra batería/requests)
+      refreshInterval: 0,                // Manual refresh para priorizar velocidad percibida
+      refreshWhenHidden: false,
       keepPreviousData: true,
       shouldRetryOnError: false,         // Evita quedarse en loading varios segundos por reintentos
       errorRetryCount: 0,

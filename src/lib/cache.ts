@@ -65,11 +65,8 @@ class SimpleCache {
 export const cache = new SimpleCache();
 
 // TTL constants
-// Bajado a 10s para que el cache cross-instance de Vercel serverless
-// no retenga datos viejos tras una transferencia (invalidatePattern solo
-// afecta a la instance donde corre la mutación).
 export const CACHE_TTL = {
-  TELEFONOS: 10_000,      // 10s - frescura sobre performance en entorno serverless
-  REPARACIONES: 10_000,   // 10s
+  TELEFONOS: 45_000,      // 45s - balance between freshness and performance
+  REPARACIONES: 45_000,   // 45s
   TECNICOS: 120_000,      // 2min - rarely changes
 } as const;
