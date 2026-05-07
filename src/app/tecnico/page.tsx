@@ -332,23 +332,31 @@ export default function TecnicoPage() {
       try {
         // Execute transfers sequentially to avoid rate limits
         let successCount = 0;
-        let errorCount = 0;
+        const failures: { itemId: string; reason: string }[] = [];
 
         for (const payload of payloads) {
           try {
             await transfer(payload);
             successCount++;
-          } catch {
-            errorCount++;
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : "Error desconocido";
+            failures.push({ itemId: payload.item_id, reason });
+            console.error("[batch-transfer] failed", payload.item_id, reason);
           }
         }
 
+        // Single revalidation at the end — backend already synced snapshot
+        // and team_summary per transfer, so this fetch returns a consistent view.
+        await fetchPhones();
+
+        const errorCount = failures.length;
         if (errorCount === 0) {
           toast.success(`${successCount} transferencias realizadas correctamente`);
         } else if (successCount > 0) {
           toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
         } else {
-          toast.error("Error en todas las transferencias");
+          const firstReason = failures[0]?.reason || "Error";
+          toast.error(`Error en todas las transferencias: ${firstReason}`);
         }
 
         handleModalClose();
@@ -359,7 +367,7 @@ export default function TecnicoPage() {
         throw err;
       }
     },
-    [transfer, handleModalClose]
+    [transfer, fetchPhones, handleModalClose]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {

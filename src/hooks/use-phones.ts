@@ -11,10 +11,6 @@ interface UsePhonesOptions {
   autoFetch?: boolean;
 }
 
-// Key for marking that data is dirty (mutation happened, server may have stale snapshot)
-const DIRTY_KEY_PREFIX = "phones-dirty-";
-const DIRTY_TTL_MS = 60_000; // 60s window
-
 // Ghost filter: hide recently transferred phone IDs from the UI for a short window
 // so polling/revalidation can't resurrect them before Monday/n8n/cache propagate.
 const RECENT_TRANSFERS_KEY_PREFIX = "phones-recent-transfers-";
@@ -44,25 +40,15 @@ function addRecentTransfer(tecnico: string, id: string): void {
   } catch {}
 }
 
-// Fetcher function for SWR
+// Fetcher function for SWR.
+// Siempre lee del snapshot (la mutación del backend lo deja consistente). El
+// dirty flag con refresh=1 fue eliminado porque bypaseaba el snapshot recién
+// escrito y caía a Monday/n8n, que tienen latencia de propagación → conteo
+// stale. El ghost filter actúa como red de seguridad ante posibles polls
+// concurrentes que devuelvan data en transición.
 const phonesFetcher = async (tecnicoNombre: string): Promise<Phone[]> => {
-  // Check if there was a recent mutation — if so, bypass server snapshot
-  let forceRefresh = false;
-  if (typeof window !== "undefined") {
-    try {
-      const dirtyAt = localStorage.getItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`);
-      if (dirtyAt && Date.now() - Number(dirtyAt) < DIRTY_TTL_MS) {
-        forceRefresh = true;
-      }
-    } catch {}
-  }
-
-  const result = await getPhonesByTecnico(tecnicoNombre, forceRefresh);
+  const result = await getPhonesByTecnico(tecnicoNombre, false);
   if (result.success && result.data) {
-    // Clear dirty flag after successful fresh fetch
-    if (forceRefresh && typeof window !== "undefined") {
-      try { localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`); } catch {}
-    }
     const recentIds = new Set(getRecentTransfers(tecnicoNombre).map((t) => t.id));
     return result.data.filter((p) => !recentIds.has(String(p.id)));
   }
@@ -139,10 +125,6 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
 
       // Sync localStorage immediately so page navigation shows correct data
       syncToLocalStorage(optimisticPhones);
-      // Mark dirty so next page load bypasses stale server snapshot
-      if (typeof window !== "undefined") {
-        try { localStorage.setItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`, String(Date.now())); } catch {}
-      }
 
       await mutate(
         async () => {
@@ -157,28 +139,9 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
         {
           optimisticData: optimisticPhones,
           rollbackOnError: true,
-          revalidate: false, // NO refetch inmediato - el item ya salió visualmente
+          revalidate: false, // El backend deja snapshot+team_summary consistentes; revalidamos al final del batch.
         }
       );
-
-      // Revalidate with forced refresh, excluding the just-transferred phone
-      // (Monday API may not have propagated the change yet)
-      const transferredId = payload.item_id;
-      setTimeout(() => {
-        mutate(async () => {
-          const result = await getPhonesByTecnico(tecnicoNombre, true);
-          if (result.success && result.data) {
-            const filtered = result.data.filter(p => p.id !== transferredId);
-            syncToLocalStorage(filtered);
-            // Clear dirty flag — server snapshot is now fresh
-            if (typeof window !== "undefined") {
-              try { localStorage.removeItem(`${DIRTY_KEY_PREFIX}${tecnicoNombre}`); } catch {}
-            }
-            return filtered;
-          }
-          return optimisticPhones;
-        }, { revalidate: false });
-      }, 2000);
     },
     [phones, mutate, tecnicoNombre, syncToLocalStorage]
   );

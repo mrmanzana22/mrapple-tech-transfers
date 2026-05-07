@@ -13,6 +13,7 @@ import {
 } from "@/lib/idempotency";
 import { cache } from "@/lib/cache";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { isLiveSnapshotEnabled, refreshTeamSummary } from "@/lib/live-snapshot";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -172,6 +173,12 @@ export async function POST(req: NextRequest) {
                 updated_at: new Date().toISOString(),
               })
               .eq("item_id", itemId);
+          }
+
+          // Recompute team summary so phones_count drops on origin and rises on
+          // destination immediately. Without this, the count UIs stay stale.
+          if (isLiveSnapshotEnabled()) {
+            await refreshTeamSummary();
           }
         } catch (e) {
           console.error("live snapshot sync error (phones):", e);
