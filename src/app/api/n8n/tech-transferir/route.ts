@@ -78,16 +78,33 @@ export async function POST(req: NextRequest) {
       return addCorsHeaders(res, req);
     }
 
-    // Ownership check in Monday (phones board)
-    const monday = await getOwnerTextForItem(itemId, OWNER_COLUMNS.PHONES);
-    const currentOwner = (monday.ownerText ?? "").trim();
+    // Ownership check
+    // Primary: Supabase snapshot (mrapple_live_phones) — fast, no Monday rate-limit.
+    // Fallback: Monday GraphQL — covers items not yet synced or edited manually in Monday.
     const sessionOwner = (session.monday_status_value || "").toUpperCase();
+    const supabase = getSupabaseServer();
 
-    let isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+    const { data: snapshotPhone } = await supabase
+      .from("mrapple_live_phones")
+      .select("tecnico_nombre")
+      .eq("item_id", itemId)
+      .maybeSingle();
 
-    // Fallback: phones use group names like "JOCEBAN - MARZO 2026" instead of column
-    if (!isOwner && !currentOwner && monday.groupTitle) {
-      isOwner = monday.groupTitle.toUpperCase().startsWith(sessionOwner);
+    const supabaseOwner = String(snapshotPhone?.tecnico_nombre ?? "").trim().toUpperCase();
+    let isOwner = supabaseOwner !== "" && supabaseOwner === sessionOwner;
+
+    let mondayInfo: Awaited<ReturnType<typeof getOwnerTextForItem>> | null = null;
+    if (!isOwner) {
+      mondayInfo = await getOwnerTextForItem(itemId, OWNER_COLUMNS.PHONES);
+      const currentOwner = (mondayInfo.ownerText ?? "").trim();
+      isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+
+      // Tolerate group titles like "JOCEBAN - MAYO 2026" / "JOCEBAN - JUNIO 2026"
+      // by extracting the first token before any dash.
+      if (!isOwner && mondayInfo.groupTitle) {
+        const groupOwner = mondayInfo.groupTitle.split(/[-–—]/)[0].trim().toUpperCase();
+        isOwner = groupOwner !== "" && groupOwner === sessionOwner;
+      }
     }
 
     if (!isOwner) {
@@ -98,7 +115,9 @@ export async function POST(req: NextRequest) {
           error: "No eres el dueño de este teléfono",
           details: {
             item_id: itemId,
-            owner_actual: currentOwner || `[group: ${monday.groupTitle}]`,
+            owner_supabase: snapshotPhone?.tecnico_nombre ?? null,
+            owner_monday: mondayInfo?.ownerText ?? null,
+            owner_monday_group: mondayInfo?.groupTitle ?? null,
             owner_session: session.monday_status_value,
           },
         },
@@ -153,7 +172,6 @@ export async function POST(req: NextRequest) {
       const nuevoTecnicoName = String(form.get("nuevo_tecnico") ?? "").trim();
       if (nuevoTecnicoName) {
         try {
-          const supabase = getSupabaseServer();
           const { data: existing } = await supabase
             .from("mrapple_live_phones")
             .select("payload")
