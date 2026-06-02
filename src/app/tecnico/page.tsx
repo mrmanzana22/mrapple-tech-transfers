@@ -63,6 +63,7 @@ export default function TecnicoPage() {
     isSyncing,
     fetchPhones,
     transfer,
+    hidePhones,
   } = usePhones({
     tecnicoNombre: tecnico?.nombre || "",
     autoFetch: !!tecnico,
@@ -87,6 +88,11 @@ export default function TecnicoPage() {
   const [selectedPhones, setSelectedPhones] = useState<Phone[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
+  // Cola de transferencias en background (permite seguir mandando más).
+  const transferQueueRef = useRef<TransferPayload[]>([]);
+  const transferWorkingRef = useRef(false);
+  const transferStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "" });
+  const transferHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal state - reparaciones
@@ -314,70 +320,114 @@ export default function TecnicoPage() {
     setSelectedPhones([]);
   }, []);
 
-  // Corre las transferencias en background (secuencial para no pegarle a los
-  // rate limits de Monday) actualizando el indicador flotante. NO bloquea el
-  // modal: éste se cierra de una y el técnico sigue navegando. La lista se
-  // actualiza en vivo porque transfer() hace optimistic update sobre el cache.
-  const runTransfers = useCallback(
-    async (payloads: TransferPayload[]) => {
-      const total = payloads.length;
-      setTransferJob({ total, done: 0, fail: 0 });
-
-      let successCount = 0;
-      const failures: { itemId: string; reason: string }[] = [];
-
-      for (const payload of payloads) {
-        try {
-          await transfer(payload);
-          successCount++;
-        } catch (err) {
-          const reason = err instanceof Error ? err.message : "Error desconocido";
-          failures.push({ itemId: payload.item_id, reason });
-          console.error("[batch-transfer] failed", payload.item_id, reason);
+  // Procesa la cola de transferencias en background, en paralelo (con tope de
+  // concurrencia para no reventar los rate limits de Monday). Sigue drenando
+  // todo lo que se vaya agregando mientras corre, así el técnico puede seguir
+  // mandando más teléfonos sin esperar. Actualiza el indicador flotante.
+  const TRANSFER_CONCURRENCY = 4;
+  const drainTransferQueue = useCallback(async () => {
+    if (transferWorkingRef.current) return;
+    transferWorkingRef.current = true;
+    try {
+      // Drena hasta vaciar, reincorporando lo que llegue durante el proceso.
+      while (true) {
+        while (transferQueueRef.current.length > 0) {
+          const batch = transferQueueRef.current.splice(0, TRANSFER_CONCURRENCY);
+          await Promise.all(
+            batch.map(async (payload) => {
+              try {
+                await transfer(payload);
+                transferStatsRef.current.ok++;
+              } catch (err) {
+                const reason = err instanceof Error ? err.message : "Error desconocido";
+                transferStatsRef.current.fail++;
+                if (!transferStatsRef.current.firstError) transferStatsRef.current.firstError = reason;
+                console.error("[transfer-queue] failed", payload.item_id, reason);
+              } finally {
+                transferStatsRef.current.done++;
+                setTransferJob({
+                  total: transferStatsRef.current.total,
+                  done: transferStatsRef.current.done,
+                  fail: transferStatsRef.current.fail,
+                });
+              }
+            })
+          );
         }
-        setTransferJob({ total, done: successCount + failures.length, fail: failures.length });
+        // Cola vacía: revalidar. Si llegó algo durante el fetch, seguimos.
+        await fetchPhones();
+        if (transferQueueRef.current.length > 0) continue;
+        break;
       }
 
-      // Revalidación única al final — el backend ya dejó snapshot + team_summary
-      // consistentes por cada transferencia.
-      await fetchPhones();
-
-      const errorCount = failures.length;
-      if (errorCount === 0) {
+      // Resumen del lote.
+      const { ok, fail, firstError } = transferStatsRef.current;
+      if (fail === 0) {
         toast.success(
-          total === 1
-            ? "Transferencia realizada correctamente"
-            : `${successCount} transferencias realizadas correctamente`
+          ok === 1 ? "Transferencia realizada correctamente" : `${ok} transferencias realizadas correctamente`
         );
-      } else if (successCount > 0) {
-        toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
+      } else if (ok > 0) {
+        toast.warning(`${ok} exitosas, ${fail} fallidas`);
       } else {
-        const firstReason = failures[0]?.reason || "Error";
-        toast.error(
-          total === 1 ? firstReason : `Error en todas las transferencias: ${firstReason}`
-        );
+        toast.error(firstError || "Error al transferir");
       }
 
-      // Dejar el estado final visible un momento y luego ocultar el indicador.
-      setTimeout(() => setTransferJob(null), 2500);
+      // Dejar el estado final visible un momento y ocultar el indicador.
+      if (transferHideTimerRef.current) clearTimeout(transferHideTimerRef.current);
+      transferHideTimerRef.current = setTimeout(() => {
+        setTransferJob(null);
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        transferHideTimerRef.current = null;
+      }, 2500);
+    } finally {
+      transferWorkingRef.current = false;
+    }
+  }, [transfer, fetchPhones]);
+
+  // Encola un lote: oculta los teléfonos al instante y arranca/continúa el worker.
+  const enqueueTransfers = useCallback(
+    (payloads: TransferPayload[]) => {
+      if (payloads.length === 0) return;
+
+      // Si el indicador estaba idle (en su ventana de auto-ocultado), arrancamos
+      // un lote limpio; si hay uno corriendo, acumulamos sobre él.
+      if (!transferWorkingRef.current && transferQueueRef.current.length === 0) {
+        if (transferHideTimerRef.current) {
+          clearTimeout(transferHideTimerRef.current);
+          transferHideTimerRef.current = null;
+        }
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+      }
+
+      // Desaparecen TODOS de una (optimista + ghost filter), sin esperar la red.
+      hidePhones(payloads.map((p) => p.item_id));
+
+      transferStatsRef.current.total += payloads.length;
+      transferQueueRef.current.push(...payloads);
+      setTransferJob({
+        total: transferStatsRef.current.total,
+        done: transferStatsRef.current.done,
+        fail: transferStatsRef.current.fail,
+      });
+      void drainTransferQueue();
     },
-    [transfer, fetchPhones]
+    [hidePhones, drainTransferQueue]
   );
 
   const handleTransferConfirm = useCallback(
     async (payload: TransferPayload) => {
       handleModalClose();
-      void runTransfers([payload]);
+      enqueueTransfers([payload]);
     },
-    [handleModalClose, runTransfers]
+    [handleModalClose, enqueueTransfers]
   );
 
   const handleBatchTransferConfirm = useCallback(
     async (payloads: TransferPayload[]) => {
       handleModalClose();
-      void runTransfers(payloads);
+      enqueueTransfers(payloads);
     },
-    [handleModalClose, runTransfers]
+    [handleModalClose, enqueueTransfers]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {

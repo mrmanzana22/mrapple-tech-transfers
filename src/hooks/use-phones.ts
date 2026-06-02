@@ -154,6 +154,28 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     [phones, mutate, tecnicoNombre, syncToLocalStorage]
   );
 
+  // Oculta YA un conjunto de teléfonos (al confirmar una transferencia), antes
+  // de que corra la red. Los registra en el ghost filter para que ninguna
+  // revalidación los resucite, y los quita del cache en un solo paso. Así el
+  // técnico ve que "se fueron todos" al instante y puede seguir seleccionando
+  // más mientras las transferencias se procesan en background.
+  const hidePhones = useCallback(
+    (ids: Array<string | number>): void => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids.map((id) => String(id)));
+      idSet.forEach((id) => addRecentTransfer(tecnicoNombre, id));
+      mutate(
+        (current?: Phone[]) => {
+          const next = (current ?? phones).filter((p) => !idSet.has(String(p.id)));
+          syncToLocalStorage(next);
+          return next;
+        },
+        { revalidate: false }
+      );
+    },
+    [phones, mutate, tecnicoNombre, syncToLocalStorage]
+  );
+
   // isSyncing = está actualizando en background (no es carga inicial)
   const isSyncing = isValidating && !isLoading && phones.length > 0;
   const showInitialLoading = isLoading && phones.length === 0 && !error;
@@ -166,5 +188,6 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
     error: error?.message || null,
     fetchPhones,
     transfer,
+    hidePhones,
   };
 }
