@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
 import { HistorialTab } from "@/components/historial-tab";
+import { TransferProgress, type TransferJob } from "@/components/transfer-progress";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
@@ -85,6 +86,7 @@ export default function TecnicoPage() {
   const [selectedPhone, setSelectedPhone] = useState<Phone | null>(null);
   const [selectedPhones, setSelectedPhones] = useState<Phone[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal state - reparaciones
@@ -312,63 +314,70 @@ export default function TecnicoPage() {
     setSelectedPhones([]);
   }, []);
 
+  // Corre las transferencias en background (secuencial para no pegarle a los
+  // rate limits de Monday) actualizando el indicador flotante. NO bloquea el
+  // modal: éste se cierra de una y el técnico sigue navegando. La lista se
+  // actualiza en vivo porque transfer() hace optimistic update sobre el cache.
+  const runTransfers = useCallback(
+    async (payloads: TransferPayload[]) => {
+      const total = payloads.length;
+      setTransferJob({ total, done: 0, fail: 0 });
+
+      let successCount = 0;
+      const failures: { itemId: string; reason: string }[] = [];
+
+      for (const payload of payloads) {
+        try {
+          await transfer(payload);
+          successCount++;
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Error desconocido";
+          failures.push({ itemId: payload.item_id, reason });
+          console.error("[batch-transfer] failed", payload.item_id, reason);
+        }
+        setTransferJob({ total, done: successCount + failures.length, fail: failures.length });
+      }
+
+      // Revalidación única al final — el backend ya dejó snapshot + team_summary
+      // consistentes por cada transferencia.
+      await fetchPhones();
+
+      const errorCount = failures.length;
+      if (errorCount === 0) {
+        toast.success(
+          total === 1
+            ? "Transferencia realizada correctamente"
+            : `${successCount} transferencias realizadas correctamente`
+        );
+      } else if (successCount > 0) {
+        toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
+      } else {
+        const firstReason = failures[0]?.reason || "Error";
+        toast.error(
+          total === 1 ? firstReason : `Error en todas las transferencias: ${firstReason}`
+        );
+      }
+
+      // Dejar el estado final visible un momento y luego ocultar el indicador.
+      setTimeout(() => setTransferJob(null), 2500);
+    },
+    [transfer, fetchPhones]
+  );
+
   const handleTransferConfirm = useCallback(
     async (payload: TransferPayload) => {
-      try {
-        await transfer(payload);
-        toast.success("Transferencia realizada correctamente");
-        handleModalClose();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Error al transferir"
-        );
-        throw err;
-      }
+      handleModalClose();
+      void runTransfers([payload]);
     },
-    [transfer, handleModalClose]
+    [handleModalClose, runTransfers]
   );
 
   const handleBatchTransferConfirm = useCallback(
     async (payloads: TransferPayload[]) => {
-      try {
-        // Execute transfers sequentially to avoid rate limits
-        let successCount = 0;
-        const failures: { itemId: string; reason: string }[] = [];
-
-        for (const payload of payloads) {
-          try {
-            await transfer(payload);
-            successCount++;
-          } catch (err) {
-            const reason = err instanceof Error ? err.message : "Error desconocido";
-            failures.push({ itemId: payload.item_id, reason });
-            console.error("[batch-transfer] failed", payload.item_id, reason);
-          }
-        }
-
-        // Single revalidation at the end — backend already synced snapshot
-        // and team_summary per transfer, so this fetch returns a consistent view.
-        await fetchPhones();
-
-        const errorCount = failures.length;
-        if (errorCount === 0) {
-          toast.success(`${successCount} transferencias realizadas correctamente`);
-        } else if (successCount > 0) {
-          toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
-        } else {
-          const firstReason = failures[0]?.reason || "Error";
-          toast.error(`Error en todas las transferencias: ${firstReason}`);
-        }
-
-        handleModalClose();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Error al transferir"
-        );
-        throw err;
-      }
+      handleModalClose();
+      void runTransfers(payloads);
     },
-    [transfer, fetchPhones, handleModalClose]
+    [handleModalClose, runTransfers]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {
@@ -871,6 +880,8 @@ export default function TecnicoPage() {
           <HistorialTab />
         ) : null}
       </main>
+
+      {transferJob && <TransferProgress job={transferJob} />}
 
       <TransferModal
         isOpen={isModalOpen}
