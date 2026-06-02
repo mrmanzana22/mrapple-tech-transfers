@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, ArrowDownLeft, Camera, Smartphone, Wrench } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Camera, Smartphone, Wrench, Search, X } from "lucide-react";
 
 type Filtro = "todos" | "enviados" | "recibidos";
 
@@ -11,6 +11,8 @@ interface Movimiento {
   id: string;
   item_id: string;
   equipo: string;
+  imei: string | null;
+  specs: string | null;
   tipo: "telefono" | "reparacion" | "desconocido";
   de: string;
   para: string;
@@ -43,15 +45,18 @@ const FILTROS: { key: Filtro; label: string }[] = [
 
 export function HistorialTab() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [busqueda, setBusqueda] = useState("");
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const cargar = useCallback(async (f: Filtro) => {
+  const cargar = useCallback(async (f: Filtro, q: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/live/historial?filtro=${f}`, {
+      const params = new URLSearchParams({ filtro: f });
+      if (q.trim()) params.set("q", q.trim());
+      const res = await fetch(`/api/live/historial?${params.toString()}`, {
         credentials: "include",
         headers: { "X-Requested-With": "mrapple" },
       });
@@ -76,11 +81,35 @@ export function HistorialTab() {
   }, []);
 
   useEffect(() => {
-    cargar(filtro);
-  }, [filtro, cargar]);
+    // Debounce de la búsqueda para no pegarle al endpoint en cada tecla.
+    const t = setTimeout(() => cargar(filtro, busqueda), busqueda ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [filtro, busqueda, cargar]);
 
   return (
     <div className="space-y-4">
+      {/* Búsqueda por IMEI o modelo */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <input
+          type="text"
+          inputMode="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por IMEI o modelo…"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg py-2 pl-9 pr-9 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500"
+        />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-white"
+            aria-label="Limpiar búsqueda"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Filtros */}
       <div className="flex gap-2 bg-zinc-800 p-1 rounded-lg">
         {FILTROS.map((f) => (
@@ -111,7 +140,9 @@ export function HistorialTab() {
         <div className="text-center py-12 text-zinc-500">{error}</div>
       ) : movimientos.length === 0 ? (
         <div className="text-center py-12 text-zinc-500">
-          {filtro === "enviados"
+          {busqueda.trim()
+            ? `Sin resultados para “${busqueda.trim()}”`
+            : filtro === "enviados"
             ? "No has enviado equipos todavía"
             : filtro === "recibidos"
             ? "No has recibido equipos todavía"
@@ -144,6 +175,14 @@ export function HistorialTab() {
                       )}
                       <p className="font-semibold text-white truncate">{m.equipo}</p>
                     </div>
+                    {m.imei && (
+                      <p className="text-xs font-mono text-zinc-400 mt-0.5 truncate">
+                        IMEI {m.imei}
+                      </p>
+                    )}
+                    {m.specs && (
+                      <p className="text-xs text-zinc-500 mt-0.5 truncate">{m.specs}</p>
+                    )}
                     <p className="text-sm text-zinc-400 mt-1">
                       {enviado ? (
                         <>

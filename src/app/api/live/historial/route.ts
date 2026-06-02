@@ -35,6 +35,8 @@ export interface MovimientoHistorial {
   id: string;
   item_id: string;
   equipo: string;
+  imei: string | null;
+  specs: string | null;
   tipo: "telefono" | "reparacion" | "desconocido";
   de: string;
   para: string;
@@ -43,6 +45,22 @@ export interface MovimientoHistorial {
   tiene_foto: boolean;
   foto_url: string | null;
   fecha: string;
+}
+
+// Specs legibles a partir del payload del snapshot.
+function buildSpecs(tipo: "telefono" | "reparacion", p: Record<string, unknown>): string | null {
+  const str = (v: unknown) => (v == null ? "" : String(v).trim());
+  if (tipo === "telefono") {
+    const parts = [
+      str(p.gb) && `${str(p.gb)}GB`,
+      str(p.color),
+      str(p.grado) && `Grado ${str(p.grado)}`,
+      str(p.estado_bateria) && `${str(p.estado_bateria)}%`,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }
+  const parts = [str(p.tipo_reparacion), str(p.cliente_nombre), str(p.estado)].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -63,10 +81,36 @@ export async function GET(req: NextRequest) {
   const limitParam = parseInt(req.nextUrl.searchParams.get("limit") || "80", 10);
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 80;
 
+  // Búsqueda por IMEI o modelo. Sanitizamos a alfanumérico + espacio para
+  // evitar romper el patrón ilike / inyección de wildcards.
+  const rawQ = (req.nextUrl.searchParams.get("q") || "").trim();
+  // Neutralizamos wildcards de ilike (% _ *) y separadores de PostgREST.
+  const q = rawQ.replace(/[%_*,()\\]/g, " ").replace(/\s+/g, " ").trim();
+
   try {
     const supabase = getSupabaseServer();
     const myId = session.tecnico_id;
     const myName = session.nombre;
+
+    // Si hay búsqueda, resolvemos qué item_ids coinciden por IMEI o nombre
+    // en el snapshot (cubre TODO el historial, no solo lo cargado).
+    let searchItemIds: string[] | null = null;
+    if (q.length >= 2) {
+      const pattern = `%${q}%`;
+      const [pImei, pNombre, rImei, rNombre] = await Promise.all([
+        supabase.from("mrapple_live_phones").select("item_id").ilike("payload->>imei", pattern),
+        supabase.from("mrapple_live_phones").select("item_id").ilike("payload->>nombre", pattern),
+        supabase.from("mrapple_live_repairs").select("item_id").ilike("payload->>imei", pattern),
+        supabase.from("mrapple_live_repairs").select("item_id").ilike("payload->>nombre", pattern),
+      ]);
+      const ids = new Set<string>();
+      for (const res of [pImei, pNombre, rImei, rNombre]) {
+        for (const row of (res.data || []) as { item_id: string }[]) {
+          if (row.item_id) ids.add(row.item_id);
+        }
+      }
+      searchItemIds = Array.from(ids);
+    }
 
     // PostgREST no normaliza acentos; los nombres internos no llevan tildes.
     // Para "recibidos" comparamos el destino (nombre) sin distinguir mayúsculas.
@@ -85,6 +129,11 @@ export async function GET(req: NextRequest) {
     } else {
       // todos: origen = mi id  O  destino = mi nombre
       query = query.or(`tecnico_origen.eq.${myId},tecnico_destino.ilike.${myName}`);
+    }
+
+    // Búsqueda: restringe a los item_ids que coinciden (AND con el scope).
+    if (searchItemIds !== null) {
+      query = query.in("item_id", searchItemIds.length ? searchItemIds : ["__none__"]);
     }
 
     const { data, error } = await query;
@@ -141,12 +190,18 @@ export async function GET(req: NextRequest) {
       const repair = repairItems.get(r.item_id);
       let tipo: MovimientoHistorial["tipo"] = "desconocido";
       let equipo = r.item_nombre || "";
+      let imei: string | null = null;
+      let specs: string | null = null;
       if (phone) {
         tipo = "telefono";
         equipo = String(phone.nombre || r.item_nombre || `Equipo ${r.item_id}`);
+        imei = phone.imei ? String(phone.imei) : null;
+        specs = buildSpecs("telefono", phone);
       } else if (repair) {
         tipo = "reparacion";
         equipo = String(repair.nombre || r.item_nombre || `Reparación ${r.item_id}`);
+        imei = repair.imei ? String(repair.imei) : null;
+        specs = buildSpecs("reparacion", repair);
       } else if (!equipo) {
         equipo = `Item ${r.item_id}`;
       }
@@ -158,6 +213,8 @@ export async function GET(req: NextRequest) {
         id: r.id,
         item_id: r.item_id,
         equipo,
+        imei,
+        specs,
         tipo,
         de: resolveOrigen(r.tecnico_origen),
         para: r.tecnico_destino || "—",
