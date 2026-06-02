@@ -1,0 +1,182 @@
+// GET /api/live/historial?filtro=enviados|recibidos|todos&limit=80
+// Historial de movimientos del técnico logueado (envíos + recibidos).
+// Lee mrapple_transfer_logs, que YA contiene transferencias de teléfonos
+// (workflow tech-transferir) y de reparaciones (workflow tech-transferir-reparacion):
+// ambos workflows escriben en esa tabla vía su nodo "Supabase Log".
+//
+// Notas de datos:
+//  - tecnico_origen se guarda como el UUID del técnico de la sesión.
+//  - tecnico_destino se guarda como el NOMBRE del técnico que recibe.
+//  - el tipo (teléfono vs reparación) no está en el log; lo derivamos buscando
+//    el item_id en el snapshot (mrapple_live_phones / mrapple_live_repairs).
+
+import { NextRequest, NextResponse } from "next/server";
+import { validateSession } from "@/lib/auth-server";
+import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
+import { getSupabaseServer } from "@/lib/supabase-server";
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsOptions(request);
+}
+
+type LogRow = {
+  id: string;
+  item_id: string;
+  item_nombre: string | null;
+  tecnico_origen: string | null;
+  tecnico_destino: string | null;
+  comentario: string | null;
+  tiene_foto: boolean | null;
+  foto_url: string | null;
+  created_at: string;
+};
+
+export interface MovimientoHistorial {
+  id: string;
+  item_id: string;
+  equipo: string;
+  tipo: "telefono" | "reparacion" | "desconocido";
+  de: string;
+  para: string;
+  direccion: "enviado" | "recibido";
+  comentario: string | null;
+  tiene_foto: boolean;
+  foto_url: string | null;
+  fecha: string;
+}
+
+export async function GET(req: NextRequest) {
+  const session = await validateSession(req);
+  if (!session) {
+    const res = NextResponse.json(
+      { success: false, code: "NO_SESSION", error: "No autenticado" },
+      { status: 401 }
+    );
+    return addCorsHeaders(res, req);
+  }
+
+  const filtroParam = (req.nextUrl.searchParams.get("filtro") || "todos").toLowerCase();
+  const filtro = ["enviados", "recibidos", "todos"].includes(filtroParam)
+    ? (filtroParam as "enviados" | "recibidos" | "todos")
+    : "todos";
+
+  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") || "80", 10);
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 80;
+
+  try {
+    const supabase = getSupabaseServer();
+    const myId = session.tecnico_id;
+    const myName = session.nombre;
+
+    // PostgREST no normaliza acentos; los nombres internos no llevan tildes.
+    // Para "recibidos" comparamos el destino (nombre) sin distinguir mayúsculas.
+    let query = supabase
+      .from("mrapple_transfer_logs")
+      .select(
+        "id, item_id, item_nombre, tecnico_origen, tecnico_destino, comentario, tiene_foto, foto_url, created_at"
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (filtro === "enviados") {
+      query = query.eq("tecnico_origen", myId);
+    } else if (filtro === "recibidos") {
+      query = query.ilike("tecnico_destino", myName);
+    } else {
+      // todos: origen = mi id  O  destino = mi nombre
+      query = query.or(`tecnico_origen.eq.${myId},tecnico_destino.ilike.${myName}`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("historial query error:", error);
+      const res = NextResponse.json(
+        { success: false, code: "DB_ERROR", error: "Error al leer historial" },
+        { status: 500 }
+      );
+      return addCorsHeaders(res, req);
+    }
+
+    const rows = (data || []) as LogRow[];
+
+    // Resolver UUIDs de origen -> nombre, y clasificar/enriquecer el equipo.
+    const originIds = Array.from(
+      new Set(rows.map((r) => r.tecnico_origen).filter((v): v is string => !!v && v.includes("-")))
+    );
+    const itemIds = Array.from(new Set(rows.map((r) => r.item_id).filter(Boolean)));
+
+    const [tecnicosRes, phonesRes, repairsRes] = await Promise.all([
+      originIds.length
+        ? supabase.from("mrapple_tecnicos").select("id, nombre").in("id", originIds)
+        : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
+      itemIds.length
+        ? supabase.from("mrapple_live_phones").select("item_id, payload").in("item_id", itemIds)
+        : Promise.resolve({ data: [] as { item_id: string; payload: Record<string, unknown> }[] }),
+      itemIds.length
+        ? supabase.from("mrapple_live_repairs").select("item_id, payload").in("item_id", itemIds)
+        : Promise.resolve({ data: [] as { item_id: string; payload: Record<string, unknown> }[] }),
+    ]);
+
+    const idToName = new Map<string, string>();
+    for (const t of (tecnicosRes.data || []) as { id: string; nombre: string }[]) {
+      idToName.set(t.id, t.nombre);
+    }
+    const phoneItems = new Map<string, Record<string, unknown>>();
+    for (const p of (phonesRes.data || []) as { item_id: string; payload: Record<string, unknown> }[]) {
+      phoneItems.set(p.item_id, p.payload);
+    }
+    const repairItems = new Map<string, Record<string, unknown>>();
+    for (const r of (repairsRes.data || []) as { item_id: string; payload: Record<string, unknown> }[]) {
+      repairItems.set(r.item_id, r.payload);
+    }
+
+    const resolveOrigen = (v: string | null): string => {
+      if (!v) return "Desconocido";
+      // Si es UUID, mapeamos a nombre; si ya es nombre, lo dejamos.
+      return v.includes("-") ? idToName.get(v) || "Desconocido" : v;
+    };
+
+    const movimientos: MovimientoHistorial[] = rows.map((r) => {
+      const phone = phoneItems.get(r.item_id);
+      const repair = repairItems.get(r.item_id);
+      let tipo: MovimientoHistorial["tipo"] = "desconocido";
+      let equipo = r.item_nombre || "";
+      if (phone) {
+        tipo = "telefono";
+        equipo = String(phone.nombre || r.item_nombre || `Equipo ${r.item_id}`);
+      } else if (repair) {
+        tipo = "reparacion";
+        equipo = String(repair.nombre || r.item_nombre || `Reparación ${r.item_id}`);
+      } else if (!equipo) {
+        equipo = `Item ${r.item_id}`;
+      }
+
+      const direccion: MovimientoHistorial["direccion"] =
+        r.tecnico_origen === myId ? "enviado" : "recibido";
+
+      return {
+        id: r.id,
+        item_id: r.item_id,
+        equipo,
+        tipo,
+        de: resolveOrigen(r.tecnico_origen),
+        para: r.tecnico_destino || "—",
+        direccion,
+        comentario: r.comentario,
+        tiene_foto: !!r.tiene_foto,
+        foto_url: r.foto_url,
+        fecha: r.created_at,
+      };
+    });
+
+    const res = NextResponse.json({ success: true, data: movimientos, filtro });
+    return addCorsHeaders(res, req);
+  } catch (error) {
+    console.error("historial error:", error);
+    const res = NextResponse.json(
+      { success: false, code: "SERVER_ERROR", error: "Error de servidor" },
+      { status: 500 }
+    );
+    return addCorsHeaders(res, req);
+  }
+}

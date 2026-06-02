@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
+import { HistorialTab } from "@/components/historial-tab";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
@@ -43,7 +44,7 @@ export default function TecnicoPage() {
   const { isAuthenticated, tecnico, loading: authLoading, logout } = useAuth();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes" | "equipo">("telefonos");
+  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes" | "equipo" | "historial">("telefonos");
 
   // Team state (Equipo tab)
   const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
@@ -541,6 +542,14 @@ export default function TecnicoPage() {
               Equipo
             </button>
           )}
+          <button
+            onClick={() => setActiveTab("historial")}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "historial" ? "bg-zinc-800 text-white" : "text-zinc-400"
+            }`}
+          >
+            Historial
+          </button>
         </div>
       </div>
 
@@ -696,7 +705,7 @@ export default function TecnicoPage() {
               ))
             )}
           </div>
-        ) : tecnico?.puede_ver_equipo ? (
+        ) : activeTab === "equipo" && tecnico?.puede_ver_equipo ? (
           /* Equipo tab content */
           <div className="space-y-4">
             {/* Sub-tabs */}
@@ -858,6 +867,8 @@ export default function TecnicoPage() {
               </>
             )}
           </div>
+        ) : activeTab === "historial" ? (
+          <HistorialTab />
         ) : null}
       </main>
 
