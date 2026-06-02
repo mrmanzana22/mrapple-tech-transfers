@@ -198,19 +198,55 @@ export async function upsertLiveRepairs(
   }
 }
 
+// PostgREST caps a SELECT at 1000 rows by default. mrapple_live_phones tiene
+// ~3375 filas, así que un select directo solo veía el primer tercio y los
+// técnicos que quedaban fuera de esa ventana se contaban como 0. Esta helper
+// pagina con .range() hasta agotar la tabla, garantizando un conteo completo.
+const PAGE_SIZE = 1000;
+
+async function selectAllRows(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  table: string,
+  column: string
+): Promise<Array<Record<string, unknown>>> {
+  const all: Array<Record<string, unknown>> = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(column)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      if (isMissingLiveSchemaError(error.message)) return all;
+      throw error;
+    }
+
+    const batch = data || [];
+    all.push(...batch);
+
+    if (batch.length < PAGE_SIZE) break; // última página
+    from += PAGE_SIZE;
+  }
+
+  return all;
+}
+
 export async function refreshTeamSummary(sourceTs?: string): Promise<void> {
   try {
     const supabase = getSupabaseServer();
     const nowIso = new Date().toISOString();
 
-    const [{ data: tecnicos }, { data: phones }, { data: repairs }] = await Promise.all([
+    const [{ data: tecnicos }, phones, repairs] = await Promise.all([
       supabase
         .from("mrapple_tecnicos")
         .select("nombre")
         .eq("activo", true)
         .eq("rol", "tecnico"),
-      supabase.from("mrapple_live_phones").select("tecnico_nombre"),
-      supabase.from("mrapple_live_repairs").select("tecnico_nombre"),
+      selectAllRows(supabase, "mrapple_live_phones", "tecnico_nombre"),
+      selectAllRows(supabase, "mrapple_live_repairs", "tecnico_nombre"),
     ]);
 
     const phoneCounts = new Map<string, number>();

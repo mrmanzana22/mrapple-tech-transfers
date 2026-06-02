@@ -120,24 +120,32 @@ export function usePhones({ tecnicoNombre, autoFetch = true }: UsePhonesOptions)
       // can't resurrect this phone from a stale server/cache snapshot.
       addRecentTransfer(tecnicoNombre, String(payload.item_id));
 
-      // Optimistic update: remove the phone from the list immediately
-      const optimisticPhones = phones.filter((p) => p.id !== payload.item_id);
-
-      // Sync localStorage immediately so page navigation shows correct data
-      syncToLocalStorage(optimisticPhones);
+      // Optimistic update: remove the phone from the list immediately.
+      // IMPORTANTE: derivar SIEMPRE del estado vigente del cache (current), NO de
+      // la variable `phones` capturada en el closure. En un batch (transferir 5 de
+      // una), `phones` queda congelado en la lista original; si cada iteración
+      // filtra sobre esa foto vieja, solo sobrevive la resta del último item y los
+      // demás reaparecen → "transfiero 5, baja 1". Usando `current` cada paso resta
+      // sobre la lista ya recortada por el paso anterior.
+      const removeItem = (list: Phone[]): Phone[] =>
+        list.filter((p) => p.id !== payload.item_id);
 
       await mutate(
-        async () => {
+        async (current?: Phone[]) => {
           const result = await transferPhone(payload);
           if (!result.success) {
-            // Rollback localStorage on error
-            syncToLocalStorage(phones);
+            // Rollback localStorage al estado previo a esta transferencia
+            syncToLocalStorage(current ?? phones);
             throw new Error(result.error || "Error al transferir");
           }
-          return optimisticPhones;
+          const next = removeItem(current ?? phones);
+          // Sync localStorage con la lista ya recortada para navegación instantánea
+          syncToLocalStorage(next);
+          return next;
         },
         {
-          optimisticData: optimisticPhones,
+          // optimisticData como función del estado actual del cache → seguro en batch
+          optimisticData: (current?: Phone[]) => removeItem(current ?? phones),
           rollbackOnError: true,
           revalidate: false, // El backend deja snapshot+team_summary consistentes; revalidamos al final del batch.
         }

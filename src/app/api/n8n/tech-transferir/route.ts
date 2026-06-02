@@ -15,6 +15,17 @@ import { cache } from "@/lib/cache";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { isLiveSnapshotEnabled, refreshTeamSummary } from "@/lib/live-snapshot";
 
+// Normaliza un nombre de dueño para comparar de forma robusta: sin acentos,
+// sin espacios sobrantes, en mayúsculas. Evita falsos NOT_OWNER por
+// "Sebastián" vs "SEBASTIAN" o por espacios extra en snapshot/Monday.
+function normalizeOwner(value: string | null | undefined): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
 }
@@ -81,7 +92,21 @@ export async function POST(req: NextRequest) {
     // Ownership check
     // Primary: Supabase snapshot (mrapple_live_phones) — fast, no Monday rate-limit.
     // Fallback: Monday GraphQL — covers items not yet synced or edited manually in Monday.
-    const sessionOwner = (session.monday_status_value || "").toUpperCase();
+    //
+    // El dueño de sesión puede aparecer en el snapshot/Monday como el status value
+    // (color_mkzxt1at) o como el nombre del técnico. Aceptamos ambos, normalizados
+    // (sin acentos, sin espacios sobrantes, en mayúsculas) para no rechazar a un
+    // dueño legítimo por "Sebastián" vs "SEBASTIAN".
+    const sessionOwners = new Set(
+      [session.monday_status_value, session.nombre]
+        .map(normalizeOwner)
+        .filter((v) => v !== "")
+    );
+    const matchesSession = (candidate: string | null | undefined): boolean => {
+      const n = normalizeOwner(candidate);
+      return n !== "" && sessionOwners.has(n);
+    };
+
     const supabase = getSupabaseServer();
 
     const { data: snapshotPhone } = await supabase
@@ -90,20 +115,25 @@ export async function POST(req: NextRequest) {
       .eq("item_id", itemId)
       .maybeSingle();
 
-    const supabaseOwner = String(snapshotPhone?.tecnico_nombre ?? "").trim().toUpperCase();
-    let isOwner = supabaseOwner !== "" && supabaseOwner === sessionOwner;
+    let isOwner = matchesSession(snapshotPhone?.tecnico_nombre);
 
     let mondayInfo: Awaited<ReturnType<typeof getOwnerTextForItem>> | null = null;
+    let mondayCheckFailed = false;
     if (!isOwner) {
-      mondayInfo = await getOwnerTextForItem(itemId, OWNER_COLUMNS.PHONES);
-      const currentOwner = (mondayInfo.ownerText ?? "").trim();
-      isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+      // Un hiccup de Monday (rate-limit/complejidad) NO debe tumbar la request al
+      // catch externo (500): lo aislamos y lo marcamos para diagnóstico.
+      try {
+        mondayInfo = await getOwnerTextForItem(itemId, OWNER_COLUMNS.PHONES);
+        isOwner = matchesSession(mondayInfo.ownerText);
 
-      // Tolerate group titles like "JOCEBAN - MAYO 2026" / "JOCEBAN - JUNIO 2026"
-      // by extracting the first token before any dash.
-      if (!isOwner && mondayInfo.groupTitle) {
-        const groupOwner = mondayInfo.groupTitle.split(/[-–—]/)[0].trim().toUpperCase();
-        isOwner = groupOwner !== "" && groupOwner === sessionOwner;
+        // Tolerate group titles like "JOCEBAN - MAYO 2026" / "JOCEBAN - JUNIO 2026"
+        // by extracting the first token before any dash.
+        if (!isOwner && mondayInfo.groupTitle) {
+          isOwner = matchesSession(mondayInfo.groupTitle.split(/[-–—]/)[0]);
+        }
+      } catch (e) {
+        mondayCheckFailed = true;
+        console.error("ownership Monday check failed:", e);
       }
     }
 
@@ -111,17 +141,23 @@ export async function POST(req: NextRequest) {
       const res = NextResponse.json(
         {
           success: false,
-          code: "NOT_OWNER",
-          error: "No eres el dueño de este teléfono",
+          // Distinguir "Monday no respondió" (no pudimos verificar) de "otro es el
+          // dueño" — para que el front/soporte sepan si reintentar o no.
+          code: mondayCheckFailed ? "OWNERSHIP_UNVERIFIED" : "NOT_OWNER",
+          error: mondayCheckFailed
+            ? "No se pudo verificar el dueño en este momento, intenta de nuevo"
+            : "No eres el dueño de este teléfono",
           details: {
             item_id: itemId,
             owner_supabase: snapshotPhone?.tecnico_nombre ?? null,
             owner_monday: mondayInfo?.ownerText ?? null,
             owner_monday_group: mondayInfo?.groupTitle ?? null,
             owner_session: session.monday_status_value,
+            owner_session_nombre: session.nombre,
+            monday_check_failed: mondayCheckFailed,
           },
         },
-        { status: 403 }
+        { status: mondayCheckFailed ? 503 : 403 }
       );
       return addCorsHeaders(res, req);
     }
