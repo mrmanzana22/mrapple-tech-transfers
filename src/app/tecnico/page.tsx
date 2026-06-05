@@ -120,8 +120,15 @@ export default function TecnicoPage() {
       if (prefersReducedMotion() || !contentRef.current) return;
       gsap.fromTo(
         contentRef.current,
-        { opacity: 0, y: 14 },
-        { opacity: 1, y: 0, duration: DURATION.base, ease: EASE.outQuint }
+        { opacity: 0, y: 24, scale: 0.985 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: DURATION.slow,
+          ease: EASE.outQuint,
+          clearProps: "transform",
+        }
       );
     },
     { dependencies: [activeTab, equipoSubTab] }
