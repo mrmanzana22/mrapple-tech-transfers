@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { gsap, useGSAP, EASE, DURATION } from "@/lib/gsap";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -68,44 +67,9 @@ export function TransferModal({
   // Dynamic technicians from Supabase
   const [tecnicos, setTecnicos] = useState<string[]>([]);
 
-  // Motion: orchestrate the body sections entering when the modal opens.
-  // Pure presentation — honors prefers-reduced-motion via gsap.matchMedia.
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-  useGSAP(
-    () => {
-      if (!isOpen || !bodyRef.current) return;
-      const sections = bodyRef.current.querySelectorAll("[data-modal-section]");
-      if (!sections.length) return;
-      const mm = gsap.matchMedia();
-      mm.add(
-        {
-          reduced: "(prefers-reduced-motion: reduce)",
-          ok: "(prefers-reduced-motion: no-preference)",
-        },
-        (ctx) => {
-          const { reduced } = ctx.conditions as { reduced: boolean };
-          if (reduced) {
-            gsap.set(sections, { opacity: 1, y: 0 });
-            return;
-          }
-          gsap.fromTo(
-            sections,
-            { opacity: 0, y: 12 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: DURATION.base,
-              ease: EASE.outQuint,
-              stagger: 0.05,
-              delay: 0.06,
-            }
-          );
-        }
-      );
-      return () => mm.revert();
-    },
-    { dependencies: [isOpen], scope: bodyRef }
-  );
+  // El modal abre/cierra como una sola pieza (animación `dialog-pop` en
+  // DialogContent). Ya no escalonamos las secciones internas: ese stagger se
+  // sentía amateur en un formulario. Entrada cohesiva = más limpia.
 
   // Load technicians on mount
   useEffect(() => {
@@ -266,7 +230,7 @@ export function TransferModal({
         </DialogHeader>
 
         {/* Body */}
-        <div ref={bodyRef} className="p-6 space-y-6">
+        <div className="p-6 space-y-6">
           {/* Phone Info Card - Single */}
           {!isBatch && phones[0] && (
             <div data-modal-section className="surface rounded-xl p-4 sheen">

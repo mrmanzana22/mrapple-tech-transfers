@@ -20,7 +20,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
-import { ChevronDown, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap } from "lucide-react";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { SegmentedTabs } from "@/components/ui/segmented-tabs";
+import { gsap, useGSAP, EASE, DURATION, prefersReducedMotion } from "@/lib/gsap";
+import { ChevronDown, ChevronRight, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap, Smartphone, Phone as PhoneIcon, Wrench } from "lucide-react";
 import { canAccessTraining } from "@/lib/training";
 import { Reveal } from "@/components/motion";
 
@@ -99,6 +102,25 @@ export default function TecnicoPage() {
   // Modal state - reparaciones
   const [selectedReparacion, setSelectedReparacion] = useState<ReparacionCliente | null>(null);
   const [isReparacionModalOpen, setIsReparacionModalOpen] = useState(false);
+
+  // Bottom-sheet de detalle de reparación (presentación; vista del equipo).
+  const [repDetalle, setRepDetalle] = useState<ReparacionCliente | null>(null);
+
+  // Transición de contenido al cambiar de pestaña (presentación). El contenido
+  // entra con un fade-up cada vez que se cambia de tab, sin remontar los hijos
+  // (preserva su estado interno). Silencioso bajo reduced-motion.
+  const contentRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (prefersReducedMotion() || !contentRef.current) return;
+      gsap.fromTo(
+        contentRef.current,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: DURATION.base, ease: EASE.outQuint }
+      );
+    },
+    { dependencies: [activeTab, equipoSubTab] }
+  );
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -575,45 +597,21 @@ export default function TecnicoPage() {
 
       {/* Tabs */}
       <div className="container mx-auto px-4 pt-4">
-        <div className="flex gap-1 surface p-1 rounded-2xl shadow-e1">
-          <button
-            onClick={() => setActiveTab("telefonos")}
-            className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
-              activeTab === "telefonos" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
-            }`}
-          >
-            Teléfonos
-          </button>
-          <button
-            onClick={() => setActiveTab("clientes")}
-            className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
-              activeTab === "clientes" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
-            }`}
-          >
-            Clientes
-          </button>
-          {tecnico?.puede_ver_equipo && (
-            <button
-              onClick={() => setActiveTab("equipo")}
-              className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
-                activeTab === "equipo" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
-              }`}
-            >
-              Equipo
-            </button>
-          )}
-          <button
-            onClick={() => setActiveTab("historial")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "historial" ? "bg-zinc-800 text-white" : "text-zinc-400"
-            }`}
-          >
-            Historial
-          </button>
-        </div>
+        <SegmentedTabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+          options={[
+            { value: "telefonos", label: "Teléfonos" },
+            { value: "clientes", label: "Clientes" },
+            ...(tecnico?.puede_ver_equipo
+              ? [{ value: "equipo", label: "Equipo" }]
+              : []),
+            { value: "historial", label: "Historial" },
+          ]}
+        />
       </div>
 
-      <main className="container mx-auto px-4 py-6">
+      <main ref={contentRef} className="container mx-auto px-4 py-6">
         {activeTab === "telefonos" ? (
           <div className="space-y-4">
             {/* Search Input */}
@@ -776,24 +774,15 @@ export default function TecnicoPage() {
           /* Equipo tab content */
           <div className="space-y-4">
             {/* Sub-tabs */}
-            <div className="flex gap-1 bg-secondary/60 p-1 rounded-xl ring-1 ring-inset ring-border">
-              <button
-                onClick={() => setEquipoSubTab("telefonos")}
-                className={`pressable-sm flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
-                  equipoSubTab === "telefonos" ? "bg-popover text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
-                }`}
-              >
-                Teléfonos
-              </button>
-              <button
-                onClick={() => setEquipoSubTab("clientes")}
-                className={`pressable-sm flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
-                  equipoSubTab === "clientes" ? "bg-popover text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
-                }`}
-              >
-                Clientes
-              </button>
-            </div>
+            <SegmentedTabs
+              size="sm"
+              value={equipoSubTab}
+              onValueChange={(v) => setEquipoSubTab(v as typeof equipoSubTab)}
+              options={[
+                { value: "telefonos", label: "Teléfonos" },
+                { value: "clientes", label: "Clientes" },
+              ]}
+            />
 
             {/* Telefonos sub-tab */}
             {equipoSubTab === "telefonos" && (
@@ -840,31 +829,41 @@ export default function TecnicoPage() {
                           }`}
                         />
                       </button>
-                      {isExpanded && (
-                        <CardContent className="pt-0 pb-4 px-4 hairline-t">
-                          {loadingTeamPhones.has(tec.nombre) ? (
-                            <div className="grid gap-3 mt-4">
-                              {[1, 2].map((i) => (
-                                <Skeleton key={i} className="h-24 w-full bg-secondary" />
-                              ))}
-                            </div>
-                          ) : tec.phones.length === 0 ? (
-                            <p className="text-muted-foreground text-sm py-4 text-center">
-                              Sin teléfonos asignados
-                            </p>
-                          ) : (
-                            <div className="grid gap-3 mt-4">
-                              {tec.phones.map((phone) => (
-                                <PhoneCard
-                                  key={phone.id}
-                                  phone={phone}
-                                  showTransferButton={false}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      )}
+                      <div
+                        className={`grid transition-[grid-template-rows] duration-base ease-out-quint ${
+                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        }`}
+                      >
+                        <div
+                          className={`overflow-hidden transition-opacity duration-base ease-out-quint ${
+                            isExpanded ? "opacity-100 delay-75" : "opacity-0"
+                          }`}
+                        >
+                          <CardContent className="pt-0 pb-4 px-4 hairline-t">
+                            {loadingTeamPhones.has(tec.nombre) ? (
+                              <div className="grid gap-3 mt-4">
+                                {[1, 2].map((i) => (
+                                  <Skeleton key={i} className="h-24 w-full bg-secondary" />
+                                ))}
+                              </div>
+                            ) : tec.phones.length === 0 ? (
+                              <p className="text-muted-foreground text-sm py-4 text-center">
+                                Sin teléfonos asignados
+                              </p>
+                            ) : (
+                              <div className="grid gap-3 mt-4">
+                                {tec.phones.map((phone) => (
+                                  <PhoneCard
+                                    key={phone.id}
+                                    phone={phone}
+                                    showTransferButton={false}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </div>
+                      </div>
                     </Card>
                     </Reveal>
                     );
@@ -918,28 +917,46 @@ export default function TecnicoPage() {
                           }`}
                         />
                       </button>
-                      {isExpanded && (
-                        <CardContent className="pt-0 pb-2 px-4 hairline-t">
-                          <div className="divide-y divide-border mt-2">
-                            {item.reparaciones.map((rep) => (
-                              <div key={rep.id} className="py-3 flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-sm text-foreground truncate">
-                                    {rep.cliente_nombre} {rep.cliente_apellido}
-                                  </p>
-                                  <p className="text-xs text-foreground/70 mt-0.5">
-                                    {rep.nombre}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
-                                    {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
-                                  </p>
-                                </div>
-                                {getEstadoBadge(rep.estado)}
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      )}
+                      <div
+                        className={`grid transition-[grid-template-rows] duration-base ease-out-quint ${
+                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        }`}
+                      >
+                        <div
+                          className={`overflow-hidden transition-opacity duration-base ease-out-quint ${
+                            isExpanded ? "opacity-100 delay-75" : "opacity-0"
+                          }`}
+                        >
+                          <CardContent className="pt-0 pb-2 px-4 hairline-t">
+                            <div className="divide-y divide-border mt-2">
+                              {item.reparaciones.map((rep) => (
+                                <button
+                                  key={rep.id}
+                                  type="button"
+                                  onClick={() => setRepDetalle(rep)}
+                                  className="group -mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-xl px-2 py-3 text-left transition-colors duration-fast ease-out-quint hover:bg-accent/50"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-foreground truncate">
+                                      {rep.cliente_nombre} {rep.cliente_apellido}
+                                    </p>
+                                    <p className="text-xs text-foreground/70 mt-0.5">
+                                      {rep.nombre}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
+                                      {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
+                                    </p>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1.5">
+                                    {getEstadoBadge(rep.estado)}
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </div>
+                      </div>
                     </Card>
                     </Reveal>
                     );
@@ -954,6 +971,62 @@ export default function TecnicoPage() {
       </main>
 
       {transferJob && <TransferProgress job={transferJob} />}
+
+      {/* Bottom-sheet de detalle de reparación (vista del equipo, solo lectura) */}
+      <DetailSheet
+        open={!!repDetalle}
+        onOpenChange={(o) => !o && setRepDetalle(null)}
+        title={repDetalle ? `${repDetalle.cliente_nombre} ${repDetalle.cliente_apellido}` : "Reparación"}
+        description={repDetalle?.cliente_telefono || undefined}
+      >
+        {repDetalle && (
+          <div className="space-y-4 pb-2">
+            {/* Equipo + estado */}
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/50 p-4 ring-1 ring-inset ring-border">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-xl bg-secondary p-2.5 ring-1 ring-inset ring-border">
+                  <Smartphone className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-foreground">{repDetalle.nombre}</p>
+                  <p className="text-xs text-muted-foreground">Equipo</p>
+                </div>
+              </div>
+              {getEstadoBadge(repDetalle.estado)}
+            </div>
+
+            {/* Campos */}
+            <dl className="divide-y divide-border overflow-hidden rounded-2xl ring-1 ring-inset ring-border">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Wrench className="h-4 w-4 text-muted-foreground/70" /> Tipo
+                </dt>
+                <dd className="text-right text-sm text-foreground">{repDetalle.tipo_reparacion}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="text-sm text-muted-foreground">IMEI</dt>
+                <dd className="font-mono tabular-nums text-sm text-foreground">{repDetalle.imei || "Sin IMEI"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <PhoneIcon className="h-4 w-4 text-muted-foreground/70" /> Cliente
+                </dt>
+                <dd className="tabular-nums text-sm text-foreground">{repDetalle.cliente_telefono}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="text-sm text-muted-foreground">Fecha</dt>
+                <dd className="tabular-nums text-sm text-foreground">{repDetalle.fecha}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="text-sm text-muted-foreground">Valor</dt>
+                <dd className="tabular-nums text-base font-semibold text-foreground">
+                  ${repDetalle.valor.toLocaleString()}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      </DetailSheet>
 
       <TransferModal
         isOpen={isModalOpen}

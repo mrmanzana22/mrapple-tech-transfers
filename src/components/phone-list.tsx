@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { verticalFade } from "@/lib/auto-animate";
 import { Smartphone, SearchX, CheckSquare, ArrowRightLeft, X } from "lucide-react";
 import { PhoneCard, PhoneCardSkeleton } from "@/components/phone-card";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,10 @@ interface PhoneListProps {
 // ============================================
 
 export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = false }: PhoneListProps) {
-  // Auto-animate for smooth list transitions (add, remove, reorder)
-  const [listRef] = useAutoAnimate<HTMLDivElement>();
+  // Auto-animate for smooth list transitions (add, remove, reorder).
+  // verticalFade: solo translateY + opacity (sin scale) para que el lote
+  // transferido salga sin corrimiento horizontal incómodo.
+  const [listRef] = useAutoAnimate<HTMLDivElement>(verticalFade);
 
   // Selection state
   const [selectionMode, setSelectionMode] = useState(false);
