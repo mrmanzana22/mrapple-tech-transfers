@@ -80,30 +80,21 @@ export function DetailSheet({
         <DialogPrimitive.Content
           className={cn(
             "fixed z-50 flex flex-col bg-popover shadow-e4 focus:outline-none",
-            // Móvil: tarjeta flotante cerca del fondo (lift + safe-area), NO
-            // pegada al borde — así no queda bajo la barra del navegador. Bordes
-            // redondeados completos, con un pequeño margen lateral. Usa dvh para
-            // respetar la barra dinámica del browser.
-            "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mx-auto w-auto max-w-lg max-h-[85dvh] rounded-3xl border border-border",
-            // Desktop: tarjeta centrada (centrado por margin auto, sin transform
-            // que pelee con la animación de zoom).
-            "sm:inset-0 sm:m-auto sm:h-fit sm:w-full sm:max-h-[85vh] sm:rounded-3xl sm:border",
+            // Tarjeta CENTRADA en pantalla (móvil y desktop): inset + margin auto
+            // la centran en ambos ejes. En móvil con margen lateral y safe-area
+            // arriba/abajo; usa dvh para respetar la barra del navegador.
+            "inset-x-3 inset-y-[max(1rem,env(safe-area-inset-bottom))] m-auto h-fit w-auto max-w-lg max-h-[85dvh] rounded-3xl border border-border",
+            // Desktop: misma tarjeta centrada, sin el margen lateral apretado.
+            "sm:inset-0 sm:w-full sm:max-h-[85vh]",
             "duration-slow ease-out-quint",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            // Móvil: sube desde abajo. Desktop: anula el slide y usa zoom+fade.
-            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-            "sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95",
+            // Entra como zoom+fade desde el centro (ya no slide desde abajo).
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
             "motion-reduce:!animate-none",
             className
           )}
         >
-          {/* Grabber (solo móvil) */}
-          <div className="flex shrink-0 justify-center pt-3 pb-1 sm:hidden">
-            <div className="h-1.5 w-10 rounded-full bg-border" />
-          </div>
-
           {/* Header */}
-          <div className="flex shrink-0 items-start justify-between gap-3 px-6 pt-2 pb-4 sm:pt-6">
+          <div className="flex shrink-0 items-start justify-between gap-3 px-6 pt-5 pb-4 sm:pt-6">
             <div className="min-w-0">
               <DialogPrimitive.Title className="text-lg font-semibold leading-tight tracking-tight text-foreground">
                 {title}
