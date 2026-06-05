@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
+import { HistorialTab } from "@/components/historial-tab";
+import { TransferProgress, type TransferJob } from "@/components/transfer-progress";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
@@ -44,7 +46,7 @@ export default function TecnicoPage() {
   const { isAuthenticated, tecnico, loading: authLoading, logout } = useAuth();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes" | "equipo">("telefonos");
+  const [activeTab, setActiveTab] = useState<"telefonos" | "clientes" | "equipo" | "historial">("telefonos");
 
   // Team state (Equipo tab)
   const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
@@ -62,6 +64,7 @@ export default function TecnicoPage() {
     isSyncing,
     fetchPhones,
     transfer,
+    hidePhones,
   } = usePhones({
     tecnicoNombre: tecnico?.nombre || "",
     autoFetch: !!tecnico,
@@ -85,6 +88,12 @@ export default function TecnicoPage() {
   const [selectedPhone, setSelectedPhone] = useState<Phone | null>(null);
   const [selectedPhones, setSelectedPhones] = useState<Phone[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
+  // Cola de transferencias en background (permite seguir mandando más).
+  const transferQueueRef = useRef<TransferPayload[]>([]);
+  const transferWorkingRef = useRef(false);
+  const transferStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "" });
+  const transferHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modal state - reparaciones
@@ -312,63 +321,114 @@ export default function TecnicoPage() {
     setSelectedPhones([]);
   }, []);
 
+  // Procesa la cola de transferencias en background, en paralelo (con tope de
+  // concurrencia para no reventar los rate limits de Monday). Sigue drenando
+  // todo lo que se vaya agregando mientras corre, así el técnico puede seguir
+  // mandando más teléfonos sin esperar. Actualiza el indicador flotante.
+  const TRANSFER_CONCURRENCY = 4;
+  const drainTransferQueue = useCallback(async () => {
+    if (transferWorkingRef.current) return;
+    transferWorkingRef.current = true;
+    try {
+      // Drena hasta vaciar, reincorporando lo que llegue durante el proceso.
+      while (true) {
+        while (transferQueueRef.current.length > 0) {
+          const batch = transferQueueRef.current.splice(0, TRANSFER_CONCURRENCY);
+          await Promise.all(
+            batch.map(async (payload) => {
+              try {
+                await transfer(payload);
+                transferStatsRef.current.ok++;
+              } catch (err) {
+                const reason = err instanceof Error ? err.message : "Error desconocido";
+                transferStatsRef.current.fail++;
+                if (!transferStatsRef.current.firstError) transferStatsRef.current.firstError = reason;
+                console.error("[transfer-queue] failed", payload.item_id, reason);
+              } finally {
+                transferStatsRef.current.done++;
+                setTransferJob({
+                  total: transferStatsRef.current.total,
+                  done: transferStatsRef.current.done,
+                  fail: transferStatsRef.current.fail,
+                });
+              }
+            })
+          );
+        }
+        // Cola vacía: revalidar. Si llegó algo durante el fetch, seguimos.
+        await fetchPhones();
+        if (transferQueueRef.current.length > 0) continue;
+        break;
+      }
+
+      // Resumen del lote.
+      const { ok, fail, firstError } = transferStatsRef.current;
+      if (fail === 0) {
+        toast.success(
+          ok === 1 ? "Transferencia realizada correctamente" : `${ok} transferencias realizadas correctamente`
+        );
+      } else if (ok > 0) {
+        toast.warning(`${ok} exitosas, ${fail} fallidas`);
+      } else {
+        toast.error(firstError || "Error al transferir");
+      }
+
+      // Dejar el estado final visible un momento y ocultar el indicador.
+      if (transferHideTimerRef.current) clearTimeout(transferHideTimerRef.current);
+      transferHideTimerRef.current = setTimeout(() => {
+        setTransferJob(null);
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        transferHideTimerRef.current = null;
+      }, 2500);
+    } finally {
+      transferWorkingRef.current = false;
+    }
+  }, [transfer, fetchPhones]);
+
+  // Encola un lote: oculta los teléfonos al instante y arranca/continúa el worker.
+  const enqueueTransfers = useCallback(
+    (payloads: TransferPayload[]) => {
+      if (payloads.length === 0) return;
+
+      // Si el indicador estaba idle (en su ventana de auto-ocultado), arrancamos
+      // un lote limpio; si hay uno corriendo, acumulamos sobre él.
+      if (!transferWorkingRef.current && transferQueueRef.current.length === 0) {
+        if (transferHideTimerRef.current) {
+          clearTimeout(transferHideTimerRef.current);
+          transferHideTimerRef.current = null;
+        }
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+      }
+
+      // Desaparecen TODOS de una (optimista + ghost filter), sin esperar la red.
+      hidePhones(payloads.map((p) => p.item_id));
+
+      transferStatsRef.current.total += payloads.length;
+      transferQueueRef.current.push(...payloads);
+      setTransferJob({
+        total: transferStatsRef.current.total,
+        done: transferStatsRef.current.done,
+        fail: transferStatsRef.current.fail,
+      });
+      void drainTransferQueue();
+    },
+    [hidePhones, drainTransferQueue]
+  );
+
   const handleTransferConfirm = useCallback(
     async (payload: TransferPayload) => {
-      try {
-        await transfer(payload);
-        toast.success("Transferencia realizada correctamente");
-        handleModalClose();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Error al transferir"
-        );
-        throw err;
-      }
+      handleModalClose();
+      enqueueTransfers([payload]);
     },
-    [transfer, handleModalClose]
+    [handleModalClose, enqueueTransfers]
   );
 
   const handleBatchTransferConfirm = useCallback(
     async (payloads: TransferPayload[]) => {
-      try {
-        // Execute transfers sequentially to avoid rate limits
-        let successCount = 0;
-        const failures: { itemId: string; reason: string }[] = [];
-
-        for (const payload of payloads) {
-          try {
-            await transfer(payload);
-            successCount++;
-          } catch (err) {
-            const reason = err instanceof Error ? err.message : "Error desconocido";
-            failures.push({ itemId: payload.item_id, reason });
-            console.error("[batch-transfer] failed", payload.item_id, reason);
-          }
-        }
-
-        // Single revalidation at the end — backend already synced snapshot
-        // and team_summary per transfer, so this fetch returns a consistent view.
-        await fetchPhones();
-
-        const errorCount = failures.length;
-        if (errorCount === 0) {
-          toast.success(`${successCount} transferencias realizadas correctamente`);
-        } else if (successCount > 0) {
-          toast.warning(`${successCount} exitosas, ${errorCount} fallidas`);
-        } else {
-          const firstReason = failures[0]?.reason || "Error";
-          toast.error(`Error en todas las transferencias: ${firstReason}`);
-        }
-
-        handleModalClose();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Error al transferir"
-        );
-        throw err;
-      }
+      handleModalClose();
+      enqueueTransfers(payloads);
     },
-    [transfer, fetchPhones, handleModalClose]
+    [handleModalClose, enqueueTransfers]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {
@@ -542,6 +602,14 @@ export default function TecnicoPage() {
               Equipo
             </button>
           )}
+          <button
+            onClick={() => setActiveTab("historial")}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "historial" ? "bg-zinc-800 text-white" : "text-zinc-400"
+            }`}
+          >
+            Historial
+          </button>
         </div>
       </div>
 
@@ -704,7 +772,7 @@ export default function TecnicoPage() {
               ))
             )}
           </div>
-        ) : tecnico?.puede_ver_equipo ? (
+        ) : activeTab === "equipo" && tecnico?.puede_ver_equipo ? (
           /* Equipo tab content */
           <div className="space-y-4">
             {/* Sub-tabs */}
@@ -880,8 +948,12 @@ export default function TecnicoPage() {
               </>
             )}
           </div>
+        ) : activeTab === "historial" ? (
+          <HistorialTab />
         ) : null}
       </main>
+
+      {transferJob && <TransferProgress job={transferJob} />}
 
       <TransferModal
         isOpen={isModalOpen}

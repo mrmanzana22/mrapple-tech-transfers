@@ -22,6 +22,20 @@ export async function POST(request: NextRequest) {
     const repairs = Array.isArray(body?.repairs) ? (body.repairs as ReparacionCliente[]) : [];
     const sourceTs = typeof body?.sourceTs === "string" ? body.sourceTs : new Date().toISOString();
 
+    // Alerta de truncamiento: el sync de n8n lee cada grupo de Monday con
+    // items_page(limit: 500) SIN cursor. Si un grupo llega a 500 items, los
+    // que sobran se pierden silenciosamente del snapshot. n8n nos manda en
+    // `meta.truncatedGroups` los grupos que tocaron el tope para enterarnos
+    // ANTES de que sea un bug de conteo. Hoy ningún grupo pasa de ~450.
+    const truncatedGroups: string[] = Array.isArray(body?.meta?.truncatedGroups)
+      ? body.meta.truncatedGroups.map(String)
+      : [];
+    if (truncatedGroups.length > 0) {
+      console.error(
+        `[SYNC TRUNCATION] ${truncatedGroups.length} grupo(s) de Monday tocaron el límite de 500 items y fueron truncados: ${truncatedGroups.join(", ")}. Hace falta paginación con cursor en el workflow n8n aXkIXqlKjgt6cjUm.`
+      );
+    }
+
     await Promise.all([
       upsertLivePhones(phones, sourceTs),
       upsertLiveRepairs(repairs, sourceTs),
@@ -34,6 +48,7 @@ export async function POST(request: NextRequest) {
         phones: phones.length,
         repairs: repairs.length,
       },
+      truncatedGroups,
       sourceTs,
     });
   } catch (error) {
