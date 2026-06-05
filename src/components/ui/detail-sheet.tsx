@@ -80,11 +80,14 @@ export function DetailSheet({
         <DialogPrimitive.Content
           className={cn(
             "fixed z-50 flex flex-col bg-popover shadow-e4 focus:outline-none",
-            // Móvil: bottom-sheet pegado abajo, ancho completo.
-            "inset-x-0 bottom-0 mx-auto max-h-[88vh] w-full max-w-lg rounded-t-3xl border-t border-border",
+            // Móvil: tarjeta flotante cerca del fondo (lift + safe-area), NO
+            // pegada al borde — así no queda bajo la barra del navegador. Bordes
+            // redondeados completos, con un pequeño margen lateral. Usa dvh para
+            // respetar la barra dinámica del browser.
+            "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mx-auto w-auto max-w-lg max-h-[85dvh] rounded-3xl border border-border",
             // Desktop: tarjeta centrada (centrado por margin auto, sin transform
             // que pelee con la animación de zoom).
-            "sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[85vh] sm:rounded-3xl sm:border",
+            "sm:inset-0 sm:m-auto sm:h-fit sm:w-full sm:max-h-[85vh] sm:rounded-3xl sm:border",
             "duration-slow ease-out-quint",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             // Móvil: sube desde abajo. Desktop: anula el slide y usa zoom+fade.
@@ -126,9 +129,7 @@ export function DetailSheet({
             ref={bodyRef}
             className={cn(
               "min-h-0 flex-1 overflow-y-auto px-6",
-              footer
-                ? "pb-2"
-                : "pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6"
+              footer ? "pb-2" : "pb-5 sm:pb-6"
             )}
           >
             {children}
