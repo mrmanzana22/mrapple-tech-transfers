@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Play, CheckCircle2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface VideoPlayerProps {
   titulo: string;
@@ -58,26 +59,26 @@ export function VideoPlayer({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="text-zinc-400 hover:text-white"
+          className="pressable text-muted-foreground hover:text-foreground -ml-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
-          <h2 className="text-lg font-bold text-white">{titulo}</h2>
-          <p className="text-sm text-zinc-500">Mira el video completo para desbloquear el quiz</p>
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-foreground tracking-tight truncate">{titulo}</h2>
+          <p className="text-sm text-muted-foreground">Mira el video completo para desbloquear el quiz</p>
         </div>
       </div>
 
       {/* Video */}
       {videoUrl ? (
-        <div className="rounded-xl overflow-hidden bg-black border border-zinc-800">
+        <div className="rounded-2xl overflow-hidden bg-black border border-border shadow-e3">
           <video
             ref={videoRef}
             src={videoUrl}
@@ -90,31 +91,34 @@ export function VideoPlayer({
           />
         </div>
       ) : (
-        <div className="rounded-xl bg-zinc-900 border border-zinc-800 aspect-video flex items-center justify-center">
+        <div className="rounded-2xl surface aspect-video flex items-center justify-center">
           <div className="text-center">
-            <Play className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-500">Video no disponible aún</p>
-            <p className="text-xs text-zinc-600 mt-1">Se habilitará cuando se suba el video</p>
+            <span className="flex h-14 w-14 mx-auto mb-3 items-center justify-center rounded-2xl bg-secondary ring-1 ring-border">
+              <Play className="w-7 h-7 text-muted-foreground" />
+            </span>
+            <p className="text-sm text-muted-foreground">Video no disponible aún</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Se habilitará cuando se suba el video</p>
           </div>
         </div>
       )}
 
       {/* Progress bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs text-zinc-500">
+      <div className="space-y-2 rounded-2xl surface p-4">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>Progreso de visualización</span>
-          <span>{watchProgress}%</span>
+          <span className="tabular-nums font-medium text-foreground">{watchProgress}%</span>
         </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              watchProgress >= 90 ? 'bg-green-500' : 'bg-blue-500'
-            }`}
+            className={cn(
+              "h-full rounded-full transition-[width] duration-slow ease-out-quint",
+              watchProgress >= 90 ? 'bg-primary' : 'bg-sky-500'
+            )}
             style={{ width: `${watchProgress}%` }}
           />
         </div>
         {!canProceed && videoUrl && (
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-muted-foreground/80">
             Necesitas ver al menos el 90% del video para continuar
           </p>
         )}
@@ -124,11 +128,12 @@ export function VideoPlayer({
       <Button
         onClick={handleComplete}
         disabled={(!canProceed && !isVideoCompleted) || completing}
-        className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+        className={cn(
+          "w-full py-6 text-base font-semibold rounded-2xl transition-all duration-base",
           canProceed || isVideoCompleted
-            ? 'bg-green-600 hover:bg-green-700 text-white'
-            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-        }`}
+            ? 'pressable bg-primary hover:bg-primary/90 text-primary-foreground'
+            : 'bg-secondary text-muted-foreground cursor-not-allowed'
+        )}
       >
         {completing ? (
           'Guardando...'

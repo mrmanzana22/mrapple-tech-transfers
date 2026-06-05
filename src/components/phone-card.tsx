@@ -45,19 +45,19 @@ const getEstadoConfig = (estado: string) => {
   const config: Record<string, { label: string; className: string }> = {
     Done: {
       label: "Completado",
-      className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      className: "bg-primary/15 text-primary ring-1 ring-inset ring-primary/25",
     },
     Reparacion: {
       label: "En Reparacion",
-      className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+      className: "bg-amber-500/15 text-amber-400 ring-1 ring-inset ring-amber-500/25",
     },
     Pendiente: {
       label: "Pendiente",
-      className: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+      className: "bg-secondary text-muted-foreground ring-1 ring-inset ring-border",
     },
     Stock: {
       label: "Stock",
-      className: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      className: "bg-sky-500/15 text-sky-400 ring-1 ring-inset ring-sky-500/25",
     },
   };
   return config[estado] || config.Pendiente;
@@ -65,16 +65,16 @@ const getEstadoConfig = (estado: string) => {
 
 const getGradoConfig = (grado: string) => {
   const config: Record<string, { label: string; className: string }> = {
-    A: { label: "Grado A", className: "bg-emerald-500/10 text-emerald-400" },
+    A: { label: "Grado A", className: "bg-primary/10 text-primary" },
     B: { label: "Grado B", className: "bg-amber-500/10 text-amber-400" },
     C: { label: "Grado C", className: "bg-red-500/10 text-red-400" },
   };
-  return config[grado] || { label: grado, className: "bg-slate-500/10 text-slate-400" };
+  return config[grado] || { label: grado, className: "bg-secondary text-muted-foreground" };
 };
 
 const getBatteryColor = (percentage: string): string => {
   const num = parseInt(percentage) || 0;
-  if (num >= 80) return "text-emerald-400";
+  if (num >= 80) return "text-primary";
   if (num >= 50) return "text-amber-400";
   return "text-red-400";
 };
@@ -124,11 +124,11 @@ function PhoneCardComponent({
       style={disableAnimation ? undefined : { animationDelay: getStaggerDelay(index), animationFillMode: "forwards" }}
       onClick={isSelectable ? handleCardClick : undefined}
     >
-      <Card className={`relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 transition-all duration-300 ${isSelected ? "ring-2 ring-blue-500 border-blue-500/50" : ""}`}>
-        {/* Gradient accent line */}
-        <div className={`absolute top-0 left-0 right-0 h-[2px] ${isSelected ? "bg-blue-500" : "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"}`} />
+      <Card className={`group relative overflow-hidden sheen ${isSelected ? "ring-2 ring-primary/70 border-primary/40 shadow-e2" : ""}`}>
+        {/* Accent rail — quiet by default, primary when selected */}
+        <div className={`absolute top-0 left-0 right-0 h-px transition-colors duration-base ease-out-quint ${isSelected ? "bg-primary" : "bg-border group-hover:bg-border/80"}`} />
 
-        <CardHeader className="pb-3">
+        <CardHeader className="p-5 pb-3.5">
           <div className="flex items-start justify-between gap-3">
             {/* Phone name and model */}
             <div className="flex items-center gap-3 min-w-0">
@@ -140,37 +140,37 @@ function PhoneCardComponent({
                     e.stopPropagation();
                     onSelect?.(phone);
                   }}
-                  className={`flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                  className={`pressable flex-shrink-0 w-6 h-6 rounded-md border flex items-center justify-center transition-[background-color,border-color] duration-fast ease-out-quint ${
                     isSelected
-                      ? "bg-blue-500 border-blue-500"
-                      : "border-slate-600 hover:border-slate-500"
+                      ? "bg-primary border-primary"
+                      : "border-input hover:border-muted-foreground/60"
                   }`}
                   aria-label={isSelected ? "Deseleccionar" : "Seleccionar"}
                 >
-                  {isSelected && <Check className="h-4 w-4 text-white" />}
+                  {isSelected && <Check className="h-4 w-4 text-primary-foreground" />}
                 </button>
               )}
-              <div className="flex-shrink-0 p-2 rounded-lg bg-slate-800/80">
-                <Smartphone className="h-5 w-5 text-slate-400" />
+              <div className="flex-shrink-0 p-2.5 rounded-xl bg-secondary ring-1 ring-inset ring-border">
+                <Smartphone className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-slate-100 truncate text-base">
+                <h3 className="font-semibold text-foreground truncate text-[15px] leading-tight">
                   {phone.nombre}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">{phone.color}</p>
+                <p className="text-xs text-muted-foreground mt-1">{phone.color}</p>
               </div>
             </div>
 
             {/* Status badge and comments indicator */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {phone.tiene_comentarios && (
-                <div className="p-1.5 rounded-md bg-blue-500/20 border border-blue-500/30">
-                  <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                <div className="p-1.5 rounded-md bg-sky-500/15 ring-1 ring-inset ring-sky-500/25">
+                  <MessageSquare className="h-3.5 w-3.5 text-sky-400" />
                 </div>
               )}
               <Badge
                 variant="outline"
-                className={`text-xs font-medium ${estadoConfig.className}`}
+                className={`text-xs font-medium border-transparent ${estadoConfig.className}`}
               >
                 {estadoConfig.label}
               </Badge>
@@ -178,37 +178,37 @@ function PhoneCardComponent({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 pb-4">
+        <CardContent className="px-5 pt-0 pb-4">
           {/* Info grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-background/40 ring-1 ring-inset ring-border/60 p-3.5">
             {/* IMEI */}
-            <div className="flex items-center gap-2 text-sm">
-              <Hash className="h-4 w-4 text-slate-500 flex-shrink-0" />
-              <span className="text-slate-400 truncate font-mono text-xs">
+            <div className="flex items-center gap-2.5 text-sm min-w-0">
+              <Hash className="h-4 w-4 text-muted-foreground/70 flex-shrink-0" />
+              <span className="text-muted-foreground truncate font-mono text-xs tabular-nums">
                 {phone.imei?.slice(-8) || "N/A"}
               </span>
             </div>
 
             {/* Capacity */}
-            <div className="flex items-center gap-2 text-sm">
-              <HardDrive className="h-4 w-4 text-slate-500 flex-shrink-0" />
-              <span className="text-slate-300">{phone.gb || "N/A"} GB</span>
+            <div className="flex items-center gap-2.5 text-sm">
+              <HardDrive className="h-4 w-4 text-muted-foreground/70 flex-shrink-0" />
+              <span className="text-foreground/80 tabular-nums">{phone.gb || "N/A"} GB</span>
             </div>
 
             {/* Battery */}
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2.5 text-sm">
               <Battery
                 className={`h-4 w-4 flex-shrink-0 ${getBatteryColor(phone.estado_bateria)}`}
               />
-              <span className={getBatteryColor(phone.estado_bateria)}>
+              <span className={`tabular-nums ${getBatteryColor(phone.estado_bateria)}`}>
                 {phone.estado_bateria || "N/A"}%
               </span>
             </div>
 
             {/* Delivery date */}
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-slate-500 flex-shrink-0" />
-              <span className="text-slate-400">
+            <div className="flex items-center gap-2.5 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground/70 flex-shrink-0" />
+              <span className="text-muted-foreground">
                 {formatDate(phone.fecha_entrega)}
               </span>
             </div>
@@ -216,10 +216,10 @@ function PhoneCardComponent({
 
           {/* Review - Solo mostrar si tiene contenido */}
           {phone.review && (
-            <div className="mt-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-start gap-2">
+            <div className="mt-3 p-3 rounded-xl bg-amber-500/[0.08] ring-1 ring-inset ring-amber-500/20">
+              <div className="flex items-start gap-2.5">
                 <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-300 leading-relaxed">
+                <p className="text-xs text-amber-200/90 leading-relaxed">
                   {phone.review}
                 </p>
               </div>
@@ -227,20 +227,20 @@ function PhoneCardComponent({
           )}
 
           {/* Grade badge */}
-          <div className="mt-3">
-            <Badge variant="secondary" className={`text-xs ${gradoConfig.className}`}>
+          <div className="mt-3.5">
+            <Badge variant="secondary" className={`text-xs border-transparent ${gradoConfig.className}`}>
               {gradoConfig.label}
             </Badge>
           </div>
         </CardContent>
 
         {showTransferButton && onTransfer && (
-          <CardFooter className="pt-0">
+          <CardFooter className="px-5 pt-0 pb-5">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onTransfer(phone)}
-              className="w-full border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+              className="w-full"
             >
               <ArrowRightLeft className="h-4 w-4 mr-2" />
               Transferir o Adjuntar Evidencia
@@ -276,29 +276,29 @@ PhoneCard.displayName = "PhoneCard";
 
 export function PhoneCardSkeleton() {
   return (
-    <Card className="border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
-      <CardHeader className="pb-3">
+    <Card className="skeleton-shimmer overflow-hidden">
+      <CardHeader className="p-5 pb-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-slate-800 animate-pulse" />
+            <div className="h-10 w-10 rounded-xl bg-secondary" />
             <div>
-              <div className="h-4 w-32 bg-slate-800 rounded animate-pulse" />
-              <div className="h-3 w-16 bg-slate-800 rounded animate-pulse mt-1.5" />
+              <div className="h-4 w-32 bg-secondary rounded" />
+              <div className="h-3 w-16 bg-secondary rounded mt-2" />
             </div>
           </div>
-          <div className="h-5 w-20 bg-slate-800 rounded-full animate-pulse" />
+          <div className="h-5 w-20 bg-secondary rounded-md" />
         </div>
       </CardHeader>
-      <CardContent className="pt-0 pb-4">
-        <div className="grid grid-cols-2 gap-3">
+      <CardContent className="px-5 pt-0 pb-4">
+        <div className="grid grid-cols-2 gap-3 rounded-xl bg-background/40 ring-1 ring-inset ring-border/60 p-3.5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-4 bg-slate-800 rounded animate-pulse" />
+            <div key={i} className="h-4 bg-secondary rounded" />
           ))}
         </div>
-        <div className="h-5 w-16 bg-slate-800 rounded-full animate-pulse mt-4" />
+        <div className="h-5 w-16 bg-secondary rounded-md mt-3.5" />
       </CardContent>
-      <CardFooter className="pt-0">
-        <div className="h-9 w-full bg-slate-800 rounded animate-pulse" />
+      <CardFooter className="px-5 pt-0 pb-5">
+        <div className="h-8 w-full bg-secondary rounded-md" />
       </CardFooter>
     </Card>
   );

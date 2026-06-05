@@ -18,7 +18,9 @@ export function TrendIndicator({ value, size = "md" }: TrendIndicatorProps) {
 
   if (value === 0) {
     return (
-      <div className={`inline-flex items-center gap-0.5 font-medium ${classes.container} text-zinc-400`}>
+      <div
+        className={`inline-flex items-center gap-1 rounded-full bg-secondary/60 px-1.5 py-0.5 font-medium tabular-nums text-muted-foreground ${classes.container}`}
+      >
         <Minus className={classes.icon} />
         <span>0%</span>
       </div>
@@ -30,8 +32,10 @@ export function TrendIndicator({ value, size = "md" }: TrendIndicatorProps) {
 
   return (
     <div
-      className={`inline-flex items-center gap-0.5 font-medium ${classes.container} ${
-        isPositive ? "text-green-400" : "text-red-400"
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium tabular-nums ${classes.container} ${
+        isPositive
+          ? "bg-primary/10 text-primary"
+          : "bg-destructive/10 text-destructive"
       }`}
     >
       {isPositive ? (

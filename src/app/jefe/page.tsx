@@ -17,6 +17,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { Reveal } from "@/components/motion";
 import { BarChart, LineChart, PieChart, TrendIndicator } from "@/components/charts";
 import { getReparacionesCliente, fetchTecnicosActivos } from "@/lib/api";
 import {
@@ -168,8 +169,8 @@ export default function JefePage() {
   // Loading state
   if (authLoading || !isAuthenticated || tecnico?.rol !== "jefe") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -200,54 +201,58 @@ export default function JefePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800">
-        <div className="container mx-auto px-4 py-3">
+      <header className="sticky top-0 z-50 glass sheen hairline-b">
+        <div className="container mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-amber-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary shadow-e1 ring-1 ring-border">
+                <Users className="h-5 w-5 text-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Dashboard Jefe</h1>
-                <p className="text-xs text-zinc-400">{tecnico?.nombre}</p>
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                  Dashboard Jefe
+                </h1>
+                <p className="text-xs text-muted-foreground">{tecnico?.nombre}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={loadData}
                 disabled={isLoading}
-                className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+                className="pressable rounded-lg bg-secondary p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
               >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
               </button>
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors"
+                className="pressable rounded-lg bg-secondary p-2 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="h-5 w-5" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Month Selector */}
-        <div className="flex items-center gap-3">
-          <Calendar className="w-5 h-5 text-zinc-400" />
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <span className="text-zinc-400 text-sm capitalize">{monthName}</span>
+      <main className="container mx-auto max-w-6xl px-4 py-8 space-y-7">
+        {/* Control bar — month selector */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="surface flex items-center gap-2.5 rounded-lg px-3 py-2 shadow-e1">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-sm font-medium text-foreground tabular-nums focus:outline-none [color-scheme:dark]"
+            />
+          </div>
+          <span className="text-sm capitalize text-muted-foreground">{monthName}</span>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+        {/* Tabs — segmented control */}
+        <div className="surface flex gap-1 rounded-xl p-1 shadow-e1">
           {[
             { id: "overview" as const, label: "Overview", icon: TrendingUp },
             { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
@@ -257,13 +262,13 @@ export default function JefePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-base ease-out-quint ${
                 activeTab === tab.id
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  ? "bg-popover text-foreground shadow-e1 ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="h-4 w-4" />
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
@@ -271,105 +276,118 @@ export default function JefePage() {
 
         {/* Tab Content */}
         {isLoading ? (
-          <div className="p-12 flex justify-center">
-            <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex justify-center p-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : (
           <>
             {/* Overview Tab */}
             {activeTab === "overview" && totals && (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {/* KPI Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Reveal
+                  className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+                  stagger={0.07}
+                  y={20}
+                  immediate
+                >
                   {/* Total Transfers */}
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs text-zinc-400">Transferencias</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                        <Phone className="h-4 w-4 text-foreground" />
                       </div>
                       <TrendIndicator value={totals.vs_periodo_anterior} size="sm" />
                     </div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                       {totals.total_transferencias}
                     </p>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                      Transferencias
+                    </span>
                   </div>
 
                   {/* With Photo */}
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-green-400" />
-                        <span className="text-xs text-zinc-400">Con Foto</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                        <Camera className="h-4 w-4 text-primary" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                       {totals.total_con_foto}
                     </p>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                      Con Foto
+                    </span>
                   </div>
 
                   {/* Without Photo */}
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-red-400" />
-                        <span className="text-xs text-zinc-400">Sin Foto</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/10 ring-1 ring-destructive/20">
+                        <Camera className="h-4 w-4 text-destructive" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                       {totals.total_sin_foto}
                     </p>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                      Sin Foto
+                    </span>
                   </div>
 
                   {/* Photo Rate */}
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Percent className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs text-zinc-400">% Fotos</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                        <Percent className="h-4 w-4 text-foreground" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                       {totals.porcentaje_foto_global}%
                     </p>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                      % Fotos
+                    </span>
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Technician Ranking */}
-                <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-                  <div className="p-4 border-b border-zinc-800">
-                    <h2 className="text-lg font-semibold text-white">
+                <Reveal className="surface overflow-hidden rounded-2xl shadow-e1" y={20}>
+                  <div className="hairline-b px-5 py-4">
+                    <h2 className="text-base font-semibold tracking-tight text-foreground">
                       Rendimiento por Técnico
                     </h2>
                   </div>
                   {metrics.length === 0 ? (
-                    <div className="p-8 text-center text-zinc-400">
+                    <div className="p-10 text-center text-sm text-muted-foreground">
                       No hay datos para este mes
                     </div>
                   ) : (
-                    <div className="divide-y divide-zinc-800">
+                    <div className="divide-y divide-border">
                       {metrics.map((m, idx) => (
                         <div
                           key={m.nombre}
-                          className="p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                          className="flex items-center justify-between px-5 py-4 transition-colors duration-base hover:bg-accent/40"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3.5">
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${
                                 idx === 0
-                                  ? "bg-amber-500/20 text-amber-400"
+                                  ? "bg-primary/15 text-primary ring-1 ring-primary/25"
                                   : idx === 1
-                                  ? "bg-zinc-400/20 text-zinc-300"
+                                  ? "bg-secondary text-foreground ring-1 ring-border"
                                   : idx === 2
-                                  ? "bg-orange-500/20 text-orange-400"
-                                  : "bg-zinc-800 text-zinc-400"
+                                  ? "bg-secondary/70 text-muted-foreground ring-1 ring-border"
+                                  : "bg-transparent text-muted-foreground ring-1 ring-border"
                               }`}
                             >
                               {idx + 1}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-white">{m.nombre}</p>
+                                <p className="font-medium text-foreground">{m.nombre}</p>
                                 <TrendIndicator
                                   value={
                                     m.tendencia === "up"
@@ -381,27 +399,27 @@ export default function JefePage() {
                                   size="sm"
                                 />
                               </div>
-                              <p className="text-xs text-zinc-400">
+                              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                                 {m.con_foto} con foto / {m.sin_foto} sin foto •{" "}
                                 {m.promedio_diario}/día
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold text-white">
+                            <p className="text-xl font-semibold tabular-nums text-foreground">
                               {m.total_transferencias}
                             </p>
-                            <div className="flex items-center gap-1 justify-end">
+                            <div className="mt-0.5 flex items-center justify-end gap-1.5">
                               <div
-                                className={`w-2 h-2 rounded-full ${
+                                className={`h-2 w-2 rounded-full ${
                                   m.porcentaje_foto >= 80
-                                    ? "bg-green-400"
+                                    ? "bg-primary"
                                     : m.porcentaje_foto >= 50
-                                    ? "bg-yellow-400"
-                                    : "bg-red-400"
+                                    ? "bg-amber-400"
+                                    : "bg-destructive"
                                 }`}
                               />
-                              <span className="text-xs text-zinc-400">
+                              <span className="text-xs text-muted-foreground tabular-nums">
                                 {m.porcentaje_foto}% foto
                               </span>
                             </div>
@@ -410,7 +428,7 @@ export default function JefePage() {
                       ))}
                     </div>
                   )}
-                </div>
+                </Reveal>
               </div>
             )}
 
@@ -418,10 +436,10 @@ export default function JefePage() {
             {activeTab === "analytics" && (
               <div className="space-y-6">
                 {/* Charts Grid */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <Reveal className="grid gap-6 md:grid-cols-2" stagger={0.08} y={20}>
                   {/* Bar Chart - Top Technicians */}
-                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-4">
+                  <div className="surface rounded-2xl p-5 shadow-e1">
+                    <h3 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
                       Top 5 Técnicos
                     </h3>
                     <div className="h-64">
@@ -435,19 +453,19 @@ export default function JefePage() {
                   </div>
 
                   {/* Pie Chart - Photo Distribution */}
-                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-4">
+                  <div className="surface rounded-2xl p-5 shadow-e1">
+                    <h3 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
                       Distribución de Fotos
                     </h3>
                     <div className="h-64">
                       <PieChart data={pieData} />
                     </div>
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Line Chart - Monthly Trend */}
-                <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                  <h3 className="text-sm font-medium text-zinc-300 mb-4">
+                <Reveal className="surface rounded-2xl p-5 shadow-e1" y={20}>
+                  <h3 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
                     Tendencia Últimos 6 Meses
                   </h3>
                   <div className="h-72">
@@ -457,12 +475,12 @@ export default function JefePage() {
                       xAxisKey="mes"
                     />
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Daily Activity */}
                 {weeklyData.length > 0 && (
-                  <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-4">
+                  <Reveal className="surface rounded-2xl p-5 shadow-e1" y={20}>
+                    <h3 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
                       Actividad Diaria del Mes
                     </h3>
                     <div className="h-72">
@@ -479,7 +497,7 @@ export default function JefePage() {
                         xAxisKey="fecha"
                       />
                     </div>
-                  </div>
+                  </Reveal>
                 )}
               </div>
             )}
@@ -488,14 +506,14 @@ export default function JefePage() {
             {activeTab === "detalle" && (
               <div className="space-y-6">
                 {/* Technician Selector */}
-                <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                <div className="surface rounded-2xl p-5 shadow-e1">
+                  <label className="mb-2 block text-sm font-medium text-foreground">
                     Seleccionar Técnico
                   </label>
                   <select
                     value={selectedTecnico}
                     onChange={(e) => setSelectedTecnico(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full rounded-lg border border-input bg-secondary px-3 py-2.5 text-sm text-foreground transition-colors duration-base focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40 [color-scheme:dark]"
                   >
                     {metrics.map((m) => (
                       <option key={m.nombre} value={m.nombre}>
@@ -508,51 +526,61 @@ export default function JefePage() {
                 {tecnicoHistorial && (
                   <>
                     {/* Technician Stats */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Activity className="w-4 h-4 text-blue-400" />
-                          <span className="text-xs text-zinc-400">
-                            Total (6 meses)
-                          </span>
+                    <Reveal
+                      className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+                      stagger={0.07}
+                      y={20}
+                    >
+                      <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                          <Activity className="h-4 w-4 text-foreground" />
                         </div>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                           {tecnicoHistorial.metricas.total_transferencias}
                         </p>
+                        <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                          Total (6 meses)
+                        </span>
                       </div>
-                      <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Camera className="w-4 h-4 text-green-400" />
-                          <span className="text-xs text-zinc-400">Con Foto</span>
+                      <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                          <Camera className="h-4 w-4 text-primary" />
                         </div>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                           {tecnicoHistorial.metricas.con_foto}
                         </p>
+                        <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                          Con Foto
+                        </span>
                       </div>
-                      <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Percent className="w-4 h-4 text-amber-400" />
-                          <span className="text-xs text-zinc-400">% Fotos</span>
+                      <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                          <Percent className="h-4 w-4 text-foreground" />
                         </div>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                           {tecnicoHistorial.metricas.porcentaje_foto}%
                         </p>
+                        <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                          % Fotos
+                        </span>
                       </div>
-                      <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <TrendingUp className="w-4 h-4 text-purple-400" />
-                          <span className="text-xs text-zinc-400">Promedio/día</span>
+                      <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                          <TrendingUp className="h-4 w-4 text-foreground" />
                         </div>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                           {tecnicoHistorial.metricas.promedio_diario}
                         </p>
+                        <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                          Promedio/día
+                        </span>
                       </div>
-                    </div>
+                    </Reveal>
 
                     {/* Technician Evolution Chart */}
                     {tecnicoHistorial.por_dia.length > 0 && (
-                      <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-                        <h3 className="text-sm font-medium text-zinc-300 mb-4">
+                      <Reveal className="surface rounded-2xl p-5 shadow-e1" y={20}>
+                        <h3 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
                           Evolución de {selectedTecnico}
                         </h3>
                         <div className="h-72">
@@ -573,45 +601,45 @@ export default function JefePage() {
                             xAxisKey="fecha"
                           />
                         </div>
-                      </div>
+                      </Reveal>
                     )}
 
                     {/* Recent Transfers */}
-                    <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-                      <div className="p-4 border-b border-zinc-800">
-                        <h3 className="text-sm font-medium text-zinc-300">
+                    <Reveal className="surface overflow-hidden rounded-2xl shadow-e1" y={20}>
+                      <div className="hairline-b px-5 py-4">
+                        <h3 className="text-sm font-semibold tracking-tight text-foreground">
                           Transferencias Recientes
                         </h3>
                       </div>
-                      <div className="divide-y divide-zinc-800">
+                      <div className="divide-y divide-border">
                         {tecnicoHistorial.transferencias_recientes.length === 0 ? (
-                          <div className="p-4 text-center text-zinc-400">
+                          <div className="p-6 text-center text-sm text-muted-foreground">
                             No hay transferencias recientes
                           </div>
                         ) : (
                           tecnicoHistorial.transferencias_recientes.map((t) => (
                             <div
                               key={t.id}
-                              className="p-4 flex items-center justify-between"
+                              className="flex items-center justify-between px-5 py-4 transition-colors duration-base hover:bg-accent/40"
                             >
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3.5">
                                 <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                  className={`flex h-9 w-9 items-center justify-center rounded-full ring-1 ${
                                     t.tiene_foto
-                                      ? "bg-green-500/20"
-                                      : "bg-red-500/20"
+                                      ? "bg-primary/10 ring-primary/20"
+                                      : "bg-destructive/10 ring-destructive/20"
                                   }`}
                                 >
                                   <Camera
-                                    className={`w-4 h-4 ${
+                                    className={`h-4 w-4 ${
                                       t.tiene_foto
-                                        ? "text-green-400"
-                                        : "text-red-400"
+                                        ? "text-primary"
+                                        : "text-destructive"
                                     }`}
                                   />
                                 </div>
                                 <div>
-                                  <p className="text-sm text-white">
+                                  <p className="text-sm text-foreground tabular-nums">
                                     {new Date(t.fecha).toLocaleDateString("es-MX", {
                                       day: "numeric",
                                       month: "short",
@@ -622,10 +650,10 @@ export default function JefePage() {
                                 </div>
                               </div>
                               <span
-                                className={`text-xs px-2 py-1 rounded-full ${
+                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                                   t.tiene_foto
-                                    ? "bg-green-500/20 text-green-400"
-                                    : "bg-red-500/20 text-red-400"
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-destructive/10 text-destructive"
                                 }`}
                               >
                                 {t.tiene_foto ? "Con foto" : "Sin foto"}
@@ -634,7 +662,7 @@ export default function JefePage() {
                           ))
                         )}
                       </div>
-                    </div>
+                    </Reveal>
                   </>
                 )}
               </div>
@@ -644,46 +672,69 @@ export default function JefePage() {
             {activeTab === "clientes" && (
               <div className="space-y-6">
                 {/* KPIs */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wrench className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs text-zinc-400">Total</span>
+                <Reveal
+                  className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+                  stagger={0.07}
+                  y={20}
+                  immediate
+                >
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary ring-1 ring-border">
+                      <Wrench className="h-4 w-4 text-foreground" />
                     </div>
-                    <p className="text-2xl font-bold text-white">{clientesTotals.total}</p>
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                      {clientesTotals.total}
+                    </p>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                      Total
+                    </span>
                   </div>
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-yellow-400" />
-                      <span className="text-xs text-zinc-400">Pendientes</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Pendientes
+                      </span>
                     </div>
-                    <p className="text-2xl font-bold text-white">{clientesTotals.pendientes}</p>
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                      {clientesTotals.pendientes}
+                    </p>
                   </div>
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-green-400" />
-                      <span className="text-xs text-zinc-400">Reparados</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Reparados
+                      </span>
                     </div>
-                    <p className="text-2xl font-bold text-white">{clientesTotals.reparados}</p>
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                      {clientesTotals.reparados}
+                    </p>
                   </div>
-                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-400" />
-                      <span className="text-xs text-zinc-400">Entregados</span>
+                  <div className="surface card-hover rounded-2xl p-5 shadow-e1">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Entregados
+                      </span>
                     </div>
-                    <p className="text-2xl font-bold text-white">{clientesTotals.entregados}</p>
+                    <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                      {clientesTotals.entregados}
+                    </p>
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Header con refresh */}
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Reparaciones por Técnico</h2>
+                  <h2 className="text-base font-semibold tracking-tight text-foreground">
+                    Reparaciones por Técnico
+                  </h2>
                   <button
                     onClick={loadClientesData}
                     disabled={clientesLoading}
-                    className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+                    className="pressable rounded-lg bg-secondary p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-4 h-4 ${clientesLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`h-4 w-4 ${clientesLoading ? "animate-spin" : ""}`} />
                   </button>
                 </div>
 
@@ -691,43 +742,56 @@ export default function JefePage() {
                 {clientesLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 animate-pulse">
-                        <div className="h-6 w-32 bg-zinc-800 rounded" />
+                      <div
+                        key={i}
+                        className="surface skeleton-shimmer rounded-2xl p-5"
+                      >
+                        <div className="h-6 w-32 rounded bg-secondary" />
                       </div>
                     ))}
                   </div>
                 ) : clientesData.length === 0 ? (
-                  <div className="text-center py-8 text-zinc-400">
+                  <div className="surface rounded-2xl py-12 text-center text-sm text-muted-foreground shadow-e1">
                     No hay reparaciones de clientes este mes
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <Reveal className="space-y-4" stagger={0.06} y={20}>
                     {clientesData.map((item) => (
-                      <div key={item.tecnico} className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-                        <div className="p-4 border-b border-zinc-800">
+                      <div
+                        key={item.tecnico}
+                        className="surface overflow-hidden rounded-2xl shadow-e1"
+                      >
+                        <div className="hairline-b px-5 py-4">
                           <div className="flex items-center justify-between">
-                            <p className="font-medium text-white">{item.tecnico}</p>
-                            <span className="text-sm text-zinc-400">{item.reparaciones.length} reparaciones</span>
+                            <p className="font-medium text-foreground">{item.tecnico}</p>
+                            <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground tabular-nums">
+                              {item.reparaciones.length} reparaciones
+                            </span>
                           </div>
                         </div>
-                        <div className="divide-y divide-zinc-800">
+                        <div className="divide-y divide-border">
                           {item.reparaciones.map((rep) => (
-                            <div key={rep.id} className="p-4 flex items-center justify-between">
+                            <div
+                              key={rep.id}
+                              className="flex items-center justify-between px-5 py-4 transition-colors duration-base hover:bg-accent/40"
+                            >
                               <div>
-                                <p className="text-sm text-white">
+                                <p className="text-sm text-foreground">
                                   {rep.cliente_nombre} {rep.cliente_apellido}
                                 </p>
-                                <p className="text-xs text-zinc-400">
+                                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                                   {rep.tipo_reparacion} • {rep.imei?.slice(-8) || "Sin IMEI"}
                                 </p>
                               </div>
-                              <span className={`text-xs px-2 py-1 rounded-full ${
-                                rep.estado?.toLowerCase().includes("reparado")
-                                  ? "bg-green-500/20 text-green-400"
-                                  : rep.estado?.toLowerCase().includes("entregado")
-                                  ? "bg-blue-500/20 text-blue-400"
-                                  : "bg-yellow-500/20 text-yellow-400"
-                              }`}>
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                                  rep.estado?.toLowerCase().includes("reparado")
+                                    ? "bg-primary/10 text-primary"
+                                    : rep.estado?.toLowerCase().includes("entregado")
+                                    ? "bg-sky-400/10 text-sky-400"
+                                    : "bg-amber-400/10 text-amber-400"
+                                }`}
+                              >
                                 {rep.estado || "Pendiente"}
                               </span>
                             </div>
@@ -735,7 +799,7 @@ export default function JefePage() {
                         </div>
                       </div>
                     ))}
-                  </div>
+                  </Reveal>
                 )}
               </div>
             )}

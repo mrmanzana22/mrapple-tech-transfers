@@ -28,11 +28,11 @@ export function Header({
   isSyncing = false,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg animate-slide-down">
+    <header className="glass hairline-b sticky top-0 z-50 w-full animate-slide-down">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo & Brand */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-black shadow-lg shadow-green-500/20 overflow-hidden">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-black shadow-e1 ring-1 ring-white/10 overflow-hidden">
             <Image
               src="/icon-192.png"
               width={32}
@@ -42,23 +42,23 @@ export function Header({
             />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-white">Mr. Manzana</h1>
-            <p className="text-xs text-zinc-500">Transferencias</p>
+            <h1 className="text-lg font-semibold tracking-tight text-foreground">Mr. Manzana</h1>
+            <p className="text-xs text-muted-foreground">Transferencias</p>
           </div>
         </div>
 
         {/* User Info & Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
           {/* User badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700/50">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/60 border border-border">
             <User className="w-4 h-4 text-green-400" />
-            <span className="text-sm font-medium text-zinc-300">
+            <span className="text-sm font-medium text-foreground/80">
               {tecnicoNombre}
             </span>
           </div>
 
           {/* Mobile user name */}
-          <span className="sm:hidden text-sm font-medium text-zinc-300 truncate max-w-[100px]">
+          <span className="sm:hidden text-sm font-medium text-foreground/80 truncate max-w-[100px]">
             {tecnicoNombre}
           </span>
 

@@ -4,26 +4,61 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
+    /* ============================================
+       COLOR — Apple-grade neutral (zinc canal), dark-first.
+       Surfaces step up in lightness for elevation (bg < card < raised).
+       Green is a PUNCTUAL accent, not a surface.
+       ============================================ */
+    --background: 240 6% 6%;        /* app canvas — near zinc-950 */
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 5% 9%;              /* default surface — sits above bg */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 5% 11%;          /* floating surface — above card */
     --popover-foreground: 0 0% 98%;
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+
+    /* Accent (green) — used for CTAs, active/positive states ONLY */
+    --primary: 142 70% 45%;
+    --primary-foreground: 144 80% 6%;
+
+    --secondary: 240 4% 14%;        /* zinc-800-ish, quiet fills/chips */
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 4% 13%;
+    --muted-foreground: 240 5% 60%; /* zinc-400/500 — secondary text */
+    --accent: 240 4% 16%;           /* hover fill for ghost/neutral */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 142.4 71.8% 29.2%;
-    --radius: 0.5rem;
+    --border: 240 4% 16%;           /* hairline — zinc-800 */
+    --input: 240 4% 18%;
+    --ring: 142 70% 45%;            /* focus ring = accent */
+    --radius: 0.625rem;             /* 10px — softer, Apple-ish */
+
+    /* ============================================
+       ELEVATION — soft, layered shadows for depth.
+       Use via Tailwind `shadow-e1..e4` or `box-shadow: var(--shadow-md)`.
+       Dark-tuned: low alpha, generous blur, tight contact shadow.
+       ============================================ */
+    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.45), 0 2px 6px -2px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.5), 0 6px 12px -6px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 24px 56px -12px rgb(0 0 0 / 0.6), 0 10px 20px -10px rgb(0 0 0 / 0.45);
+    /* Accent glow — for primary CTAs / active highlights (use sparingly) */
+    --shadow-accent: 0 6px 24px -6px hsl(142 70% 45% / 0.4);
+
+    /* ============================================
+       MOTION — named easings + durations.
+       Mirror these in JS via EASE / DURATION in src/lib/gsap.ts.
+       ============================================ */
+    --duration-fast: 150ms;
+    --duration-base: 300ms;
+    --duration-slow: 500ms;
+    --duration-slower: 800ms;
+
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);   /* confident decel */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* material standard */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* playful overshoot */
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);      /* symmetric reversible */
   }
 }
 
@@ -38,25 +73,48 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Geist: enable ligatures + tabular alignment for numeric UI (IMEI, %) */
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom scrollbar */
+  /* Tighter, more confident heading rhythm */
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
+    text-wrap: balance;
+  }
+
+  /* Accessible focus — visible ring only on keyboard nav */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Numeric data should align in columns (prices, IMEI, battery %) */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom scrollbar — refined neutral */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-zinc-900;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-700 rounded-full;
+    @apply rounded-full;
+    background-color: hsl(240 4% 22%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-zinc-600;
+    background-color: hsl(240 4% 30%);
   }
 }
 
@@ -65,14 +123,44 @@
     text-wrap: balance;
   }
 
-  /* Gradient text utility */
+  /* Gradient text utility — accent, use sparingly (brand moments) */
   .text-gradient {
     @apply bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent;
   }
 
-  /* Glass effect */
+  /* Glass effect — refined: subtle top-light, saturated blur, hairline */
   .glass {
-    @apply bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/50;
+    background-color: hsl(240 5% 9% / 0.6);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid hsl(240 4% 18% / 0.6);
+  }
+
+  /* ============================================
+     SURFACE + ELEVATION HELPERS
+     Quick way to give a neutral surface depth without per-screen guessing.
+     ============================================ */
+  .surface {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+  .surface-raised {
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-md);
+  }
+  /* Hairline separators */
+  .hairline { border-color: hsl(var(--border)); }
+  .hairline-t { border-top: 1px solid hsl(var(--border)); }
+  .hairline-b { border-bottom: 1px solid hsl(var(--border)); }
+
+  /* Subtle top sheen for premium surfaces (place as ::before-less overlay) */
+  .sheen {
+    background-image: linear-gradient(
+      to bottom,
+      hsl(0 0% 100% / 0.04),
+      transparent 120px
+    );
   }
 
   /* ============================================
@@ -119,13 +207,18 @@
   .stagger-7 { animation-delay: 0.7s; }
   .stagger-8 { animation-delay: 0.8s; }
 
-  /* Card hover effect */
+  /* Card hover effect — refined: gentle lift + elevation, not a zoom */
   .card-hover {
-    @apply transition-all duration-200 ease-out;
+    transition: transform var(--duration-base) var(--ease-out-quint),
+      box-shadow var(--duration-base) var(--ease-out-quint),
+      border-color var(--duration-base) var(--ease-out-quint);
+    will-change: transform;
   }
 
   .card-hover:hover {
-    transform: scale(1.02);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: hsl(240 4% 22%);
   }
 
   /* Fade transition for conditional rendering */
@@ -298,7 +391,9 @@
      PRESSABLE - Tactile feedback for buttons
      ============================================ */
   .pressable {
-    transition: transform 150ms ease-out, opacity 150ms ease-out;
+    transition: transform var(--duration-fast) var(--ease-out-quint),
+      opacity var(--duration-fast) var(--ease-out-quint),
+      box-shadow var(--duration-fast) var(--ease-out-quint);
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -306,7 +401,7 @@
 
   .pressable:active {
     transform: scale(0.97);
-    opacity: 0.9;
+    opacity: 0.92;
   }
 
   .pressable-sm:active {
@@ -321,12 +416,14 @@
      HOVER LIFT - Subtle elevation on hover
      ============================================ */
   .hover-lift {
-    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+    transition: transform var(--duration-base) var(--ease-out-quint),
+      box-shadow var(--duration-base) var(--ease-out-quint);
+    will-change: transform;
   }
 
   .hover-lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-lg);
   }
 
   /* ============================================
@@ -483,8 +580,18 @@
       transform: none;
     }
 
-    .hover-lift:hover {
+    .hover-lift:hover,
+    .card-hover:hover {
       transform: none;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

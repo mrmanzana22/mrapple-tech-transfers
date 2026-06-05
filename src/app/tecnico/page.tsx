@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
 import { ChevronDown, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap } from "lucide-react";
 import { canAccessTraining } from "@/lib/training";
+import { Reveal } from "@/components/motion";
 
 // Hook para debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -463,28 +464,28 @@ export default function TecnicoPage() {
   const getEstadoBadge = (estado: string) => {
     const estadoLower = estado.toLowerCase();
     if (estadoLower.includes("reparado")) {
-      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{estado}</Badge>;
+      return <Badge className="border-transparent bg-primary/15 text-primary ring-1 ring-inset ring-primary/25">{estado}</Badge>;
     }
     if (estadoLower.includes("pendiente") || estadoLower.includes("espera")) {
-      return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">{estado}</Badge>;
+      return <Badge className="border-transparent bg-amber-500/15 text-amber-400 ring-1 ring-inset ring-amber-500/25">{estado}</Badge>;
     }
     if (estadoLower.includes("proceso") || estadoLower.includes("reparando")) {
-      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">{estado}</Badge>;
+      return <Badge className="border-transparent bg-sky-500/15 text-sky-400 ring-1 ring-inset ring-sky-500/25">{estado}</Badge>;
     }
-    return <Badge className="bg-zinc-500/20 text-zinc-400 border-zinc-500/30">{estado}</Badge>;
+    return <Badge className="border-transparent bg-secondary text-muted-foreground ring-1 ring-inset ring-border">{estado}</Badge>;
   };
 
   // Loading state
   if (authLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-background">
       <Header
         tecnicoNombre={tecnico?.nombre || ""}
         onLogout={handleLogout}
@@ -498,35 +499,35 @@ export default function TecnicoPage() {
         <div className="container mx-auto px-4 pt-4">
           <button
             onClick={() => router.push('/tecnico/entrenamiento')}
-            className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20 hover:border-green-500/40 transition-all group"
+            className="pressable w-full flex items-center gap-3 p-3.5 rounded-2xl surface shadow-e1 sheen hover:border-primary/30 transition-[border-color,box-shadow] duration-base ease-out-quint group"
           >
-            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-green-400" />
+            <div className="w-10 h-10 rounded-xl bg-primary/15 ring-1 ring-inset ring-primary/25 flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-primary" />
             </div>
             <div className="text-left flex-1">
-              <p className="text-sm font-semibold text-white">Entrenamiento Microsoldadura</p>
-              <p className="text-xs text-zinc-500">Continúa tu progreso</p>
+              <p className="text-sm font-semibold text-foreground">Entrenamiento Microsoldadura</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Continúa tu progreso</p>
             </div>
-            <ChevronDown className="w-4 h-4 text-zinc-500 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90 group-hover:translate-x-0.5 transition-transform duration-base ease-out-quint" />
           </button>
         </div>
       )}
 
       {/* Tabs */}
       <div className="container mx-auto px-4 pt-4">
-        <div className="flex gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+        <div className="flex gap-1 surface p-1 rounded-2xl shadow-e1">
           <button
             onClick={() => setActiveTab("telefonos")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "telefonos" ? "bg-zinc-800 text-white" : "text-zinc-400"
+            className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
+              activeTab === "telefonos" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
             }`}
           >
             Teléfonos
           </button>
           <button
             onClick={() => setActiveTab("clientes")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "clientes" ? "bg-zinc-800 text-white" : "text-zinc-400"
+            className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
+              activeTab === "clientes" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
             }`}
           >
             Clientes
@@ -534,8 +535,8 @@ export default function TecnicoPage() {
           {tecnico?.puede_ver_equipo && (
             <button
               onClick={() => setActiveTab("equipo")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "equipo" ? "bg-zinc-800 text-white" : "text-zinc-400"
+              className={`pressable-sm flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
+                activeTab === "equipo" ? "bg-secondary text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
               }`}
             >
               Equipo
@@ -549,28 +550,28 @@ export default function TecnicoPage() {
           <div className="space-y-4">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 type="text"
                 placeholder="Buscar por IMEI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 placeholder:text-zinc-500"
+                className="pl-11 pr-11 h-11 rounded-xl tabular-nums"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-zinc-800 rounded-full transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-accent rounded-full transition-colors duration-fast ease-out-quint"
                   aria-label="Limpiar búsqueda"
                 >
-                  <X className="h-4 w-4 text-zinc-500" />
+                  <X className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
             </div>
 
             {/* Results counter when filtering */}
             {debouncedSearch.trim() && (
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-muted-foreground tabular-nums animate-fade-in">
                 {filteredPhones.length} de {phones.length} teléfono{phones.length !== 1 ? "s" : ""}
               </p>
             )}
@@ -588,52 +589,58 @@ export default function TecnicoPage() {
             {reparacionesLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <Card key={i} className="bg-zinc-900 border-zinc-800">
-                    <CardContent className="p-4">
-                      <Skeleton className="h-6 w-48 mb-2" />
-                      <Skeleton className="h-4 w-32 mb-2" />
-                      <Skeleton className="h-4 w-24" />
+                  <Card key={i} className="skeleton-shimmer">
+                    <CardContent className="p-5">
+                      <Skeleton className="h-6 w-48 mb-2.5 bg-secondary" />
+                      <Skeleton className="h-4 w-32 mb-2 bg-secondary" />
+                      <Skeleton className="h-4 w-24 bg-secondary" />
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : reparaciones.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500">
-                No hay reparaciones de clientes asignadas
-              </div>
+              <Reveal y={16} className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="p-5 rounded-2xl bg-secondary ring-1 ring-inset ring-border mb-5">
+                  <UserCircle className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  No hay reparaciones de clientes asignadas
+                </p>
+              </Reveal>
             ) : (
-              reparaciones.map((rep) => (
-                <Card key={rep.id} className="bg-zinc-900 border-zinc-800">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-white">
+              reparaciones.map((rep, i) => (
+                <Reveal key={rep.id} y={20} delay={Math.min(i * 0.04, 0.32)} className="card-hover">
+                <Card className="sheen">
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start mb-4 gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-foreground truncate">
                           {rep.cliente_nombre} {rep.cliente_apellido}
                         </h3>
-                        <p className="text-sm text-zinc-400">{rep.cliente_telefono}</p>
-                        <p className="text-sm text-zinc-300 mt-1">{rep.nombre}</p>
+                        <p className="text-sm text-muted-foreground tabular-nums mt-0.5">{rep.cliente_telefono}</p>
+                        <p className="text-sm text-foreground/80 mt-1.5">{rep.nombre}</p>
                       </div>
                       {getEstadoBadge(rep.estado)}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                      <div>
-                        <span className="text-zinc-500">Tipo:</span>
-                        <span className="text-zinc-300 ml-2">{rep.tipo_reparacion}</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm mb-4 rounded-xl bg-background/40 ring-1 ring-inset ring-border/60 p-3.5">
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Tipo:</span>
+                        <span className="text-foreground/80 ml-2">{rep.tipo_reparacion}</span>
                       </div>
-                      <div>
-                        <span className="text-zinc-500">IMEI:</span>
-                        <span className="text-zinc-300 ml-2 font-mono">
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">IMEI:</span>
+                        <span className="text-foreground/80 ml-2 font-mono tabular-nums">
                           ...{rep.imei.slice(-8)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-zinc-500">Fecha:</span>
-                        <span className="text-zinc-300 ml-2">{rep.fecha}</span>
+                        <span className="text-muted-foreground">Fecha:</span>
+                        <span className="text-foreground/80 ml-2 tabular-nums">{rep.fecha}</span>
                       </div>
                       <div>
-                        <span className="text-zinc-500">Valor:</span>
-                        <span className="text-zinc-300 ml-2">${rep.valor.toLocaleString()}</span>
+                        <span className="text-muted-foreground">Valor:</span>
+                        <span className="text-foreground/80 ml-2 tabular-nums">${rep.valor.toLocaleString()}</span>
                       </div>
                     </div>
 
@@ -644,11 +651,11 @@ export default function TecnicoPage() {
                           onClick={() => handleReparadoOficina(rep)}
                           disabled={changingEstado === rep.id}
                           size="sm"
-                          className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white order-1 sm:order-2"
+                          className="w-full sm:flex-1 order-1 sm:order-2"
                         >
                           {changingEstado === rep.id ? (
                             <span className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                               <span className="hidden sm:inline">Actualizando...</span>
                             </span>
                           ) : (
@@ -666,10 +673,10 @@ export default function TecnicoPage() {
                             disabled={changingEstado === rep.id}
                             variant="outline"
                             size="sm"
-                            className="flex-1 sm:flex-none text-red-500 border-red-500/30 hover:bg-red-500/10"
+                            className="flex-1 sm:flex-none text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                           >
                             {changingEstado === rep.id ? (
-                              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <>
                                 <XCircle className="h-4 w-4 mr-1" />
@@ -682,7 +689,7 @@ export default function TecnicoPage() {
                             onClick={() => handleTransferReparacionClick(rep)}
                             variant="outline"
                             size="sm"
-                            className="flex-1 sm:flex-none border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                            className="flex-1 sm:flex-none"
                           >
                             <ArrowRightLeft className="h-4 w-4 mr-1" />
                             <span className="sm:hidden">Mover</span>
@@ -693,6 +700,7 @@ export default function TecnicoPage() {
                     )}
                   </CardContent>
                 </Card>
+                </Reveal>
               ))
             )}
           </div>
@@ -700,19 +708,19 @@ export default function TecnicoPage() {
           /* Equipo tab content */
           <div className="space-y-4">
             {/* Sub-tabs */}
-            <div className="flex gap-2 bg-zinc-800 p-1 rounded-lg">
+            <div className="flex gap-1 bg-secondary/60 p-1 rounded-xl ring-1 ring-inset ring-border">
               <button
                 onClick={() => setEquipoSubTab("telefonos")}
-                className={`flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all ${
-                  equipoSubTab === "telefonos" ? "bg-zinc-700 text-white" : "text-zinc-400"
+                className={`pressable-sm flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
+                  equipoSubTab === "telefonos" ? "bg-popover text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
                 }`}
               >
                 Teléfonos
               </button>
               <button
                 onClick={() => setEquipoSubTab("clientes")}
-                className={`flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all ${
-                  equipoSubTab === "clientes" ? "bg-zinc-700 text-white" : "text-zinc-400"
+                className={`pressable-sm flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-base ease-out-quint ${
+                  equipoSubTab === "clientes" ? "bg-popover text-foreground shadow-e1" : "text-muted-foreground hover:text-foreground/80"
                 }`}
               >
                 Clientes
@@ -725,50 +733,55 @@ export default function TecnicoPage() {
                 {teamLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                      <Card key={i} className="bg-zinc-900 border-zinc-800">
-                        <CardContent className="p-4">
-                          <Skeleton className="h-6 w-48 mb-2" />
-                          <Skeleton className="h-4 w-24" />
+                      <Card key={i} className="skeleton-shimmer">
+                        <CardContent className="p-5">
+                          <Skeleton className="h-6 w-48 mb-2.5 bg-secondary" />
+                          <Skeleton className="h-4 w-24 bg-secondary" />
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 ) : teamData.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-500">
+                  <div className="text-center py-16 text-muted-foreground text-sm">
                     No hay técnicos disponibles
                   </div>
                 ) : (
-                  teamData.map((tec) => (
-                    <Card key={tec.nombre} className="bg-zinc-900 border-zinc-800 overflow-hidden">
+                  teamData.map((tec, i) => {
+                    const isExpanded = expandedTecnicos.has(tec.nombre);
+                    return (
+                    <Reveal key={tec.nombre} y={18} delay={Math.min(i * 0.04, 0.32)}>
+                    <Card className={`overflow-hidden transition-[border-color] duration-base ease-out-quint ${isExpanded ? "border-border" : ""}`}>
                       <button
                         onClick={() => toggleTecnico(tec.nombre)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                        className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors duration-fast ease-out-quint"
                       >
                         <div className="flex items-center gap-3">
-                          <UserCircle className="w-8 h-8 text-zinc-500" />
+                          <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center">
+                            <UserCircle className="w-6 h-6 text-muted-foreground" />
+                          </div>
                           <div className="text-left">
-                            <h3 className="font-semibold text-white">{tec.nombre}</h3>
-                            <p className="text-sm text-zinc-400">
+                            <h3 className="font-semibold text-foreground">{tec.nombre}</h3>
+                            <p className="text-sm text-muted-foreground tabular-nums">
                               {(tec.phonesCount ?? tec.phones.length)} teléfono{(tec.phonesCount ?? tec.phones.length) !== 1 ? "s" : ""}
                             </p>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`w-5 h-5 text-zinc-400 transition-transform ${
-                            expandedTecnicos.has(tec.nombre) ? "rotate-180" : ""
+                          className={`w-5 h-5 text-muted-foreground transition-transform duration-base ease-out-quint ${
+                            isExpanded ? "rotate-180" : ""
                           }`}
                         />
                       </button>
-                      {expandedTecnicos.has(tec.nombre) && (
-                        <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
+                      {isExpanded && (
+                        <CardContent className="pt-0 pb-4 px-4 hairline-t">
                           {loadingTeamPhones.has(tec.nombre) ? (
                             <div className="grid gap-3 mt-4">
                               {[1, 2].map((i) => (
-                                <Skeleton key={i} className="h-24 w-full bg-zinc-800" />
+                                <Skeleton key={i} className="h-24 w-full bg-secondary" />
                               ))}
                             </div>
                           ) : tec.phones.length === 0 ? (
-                            <p className="text-zinc-500 text-sm py-4 text-center">
+                            <p className="text-muted-foreground text-sm py-4 text-center">
                               Sin teléfonos asignados
                             </p>
                           ) : (
@@ -785,7 +798,9 @@ export default function TecnicoPage() {
                         </CardContent>
                       )}
                     </Card>
-                  ))
+                    </Reveal>
+                    );
+                  })
                 )}
               </>
             )}
@@ -796,53 +811,58 @@ export default function TecnicoPage() {
                 {teamClientesLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                      <Card key={i} className="bg-zinc-900 border-zinc-800">
-                        <CardContent className="p-4">
-                          <Skeleton className="h-6 w-48 mb-2" />
-                          <Skeleton className="h-4 w-24" />
+                      <Card key={i} className="skeleton-shimmer">
+                        <CardContent className="p-5">
+                          <Skeleton className="h-6 w-48 mb-2.5 bg-secondary" />
+                          <Skeleton className="h-4 w-24 bg-secondary" />
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 ) : teamClientesData.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-500">
+                  <div className="text-center py-16 text-muted-foreground text-sm">
                     No hay reparaciones de clientes asignadas
                   </div>
                 ) : (
-                  teamClientesData.map((item) => (
-                    <Card key={item.tecnico} className="bg-zinc-900 border-zinc-800 overflow-hidden">
+                  teamClientesData.map((item, i) => {
+                    const isExpanded = expandedTecnicos.has(item.tecnico);
+                    return (
+                    <Reveal key={item.tecnico} y={18} delay={Math.min(i * 0.04, 0.32)}>
+                    <Card className="overflow-hidden">
                       <button
                         onClick={() => toggleTecnico(item.tecnico)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+                        className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors duration-fast ease-out-quint"
                       >
                         <div className="flex items-center gap-3">
-                          <UserCircle className="w-8 h-8 text-zinc-500" />
+                          <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center">
+                            <UserCircle className="w-6 h-6 text-muted-foreground" />
+                          </div>
                           <div className="text-left">
-                            <h3 className="font-semibold text-white">{item.tecnico}</h3>
-                            <p className="text-sm text-zinc-400">
+                            <h3 className="font-semibold text-foreground">{item.tecnico}</h3>
+                            <p className="text-sm text-muted-foreground tabular-nums">
                               {item.reparaciones.length} reparación{item.reparaciones.length !== 1 ? "es" : ""}
                             </p>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`w-5 h-5 text-zinc-400 transition-transform ${
-                            expandedTecnicos.has(item.tecnico) ? "rotate-180" : ""
+                          className={`w-5 h-5 text-muted-foreground transition-transform duration-base ease-out-quint ${
+                            isExpanded ? "rotate-180" : ""
                           }`}
                         />
                       </button>
-                      {expandedTecnicos.has(item.tecnico) && (
-                        <CardContent className="pt-0 pb-4 px-4 border-t border-zinc-800">
-                          <div className="divide-y divide-zinc-800 mt-2">
+                      {isExpanded && (
+                        <CardContent className="pt-0 pb-2 px-4 hairline-t">
+                          <div className="divide-y divide-border mt-2">
                             {item.reparaciones.map((rep) => (
-                              <div key={rep.id} className="py-3 flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-white">
+                              <div key={rep.id} className="py-3 flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm text-foreground truncate">
                                     {rep.cliente_nombre} {rep.cliente_apellido}
                                   </p>
-                                  <p className="text-xs text-zinc-300">
+                                  <p className="text-xs text-foreground/70 mt-0.5">
                                     {rep.nombre}
                                   </p>
-                                  <p className="text-xs text-zinc-500">
+                                  <p className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
                                     {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
                                   </p>
                                 </div>
@@ -853,7 +873,9 @@ export default function TecnicoPage() {
                         </CardContent>
                       )}
                     </Card>
-                  ))
+                    </Reveal>
+                    );
+                  })
                 )}
               </>
             )}

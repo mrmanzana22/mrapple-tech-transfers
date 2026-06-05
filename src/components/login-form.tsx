@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
+import { gsap, useGSAP, EASE, DURATION } from "@/lib/gsap";
 
 interface LoginFormProps {
   onSuccess: (rol?: string) => void;
@@ -18,10 +19,54 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Presentation-only: scope for the GSAP entrance orchestration.
+  const scopeRef = useRef<HTMLDivElement | null>(null);
+
   // Trigger mount animation
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Choreographed entrance (presentation only). Honors reduced-motion.
+  useGSAP(
+    () => {
+      const reduce =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (reduce) {
+        gsap.set("[data-anim]", { opacity: 1, y: 0, scale: 1 });
+        return;
+      }
+
+      const tl = gsap.timeline({ defaults: { ease: EASE.outQuint } });
+      tl.fromTo(
+        "[data-anim='brand']",
+        { opacity: 0, y: 16, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: DURATION.slow }
+      )
+        .fromTo(
+          "[data-anim='pin']",
+          { opacity: 0, y: 14, scale: 0.92 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: DURATION.base,
+            stagger: 0.06,
+            ease: EASE.outQuint,
+          },
+          "-=0.25"
+        )
+        .fromTo(
+          "[data-anim='meta']",
+          { opacity: 0, y: 10 },
+          { opacity: 1, y: 0, duration: DURATION.base, stagger: 0.05 },
+          "-=0.1"
+        );
+    },
+    { scope: scopeRef }
+  );
 
   // Auto-submit cuando se completan los 4 digitos
   useEffect(() => {
@@ -129,54 +174,49 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
     [digits]
   );
 
-  // Stagger delays for inputs
-  const getStaggerDelay = (index: number) => {
-    const delays = ["0.1s", "0.2s", "0.3s", "0.4s"];
-    return delays[index] || "0s";
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-4">
-      {/* Efecto de glow sutil en el fondo */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-green-500/5 rounded-full blur-3xl" />
+    <div
+      ref={scopeRef}
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background p-6"
+    >
+      {/* Ambient depth — quiet neutral wash + a single, restrained accent bloom */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,hsl(240_5%_11%/0.9),transparent_60%)]" />
+        <div className="absolute left-1/2 top-[38%] h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
       </div>
 
       <div
-        className={`relative z-10 w-full max-w-sm ${
-          mounted ? "animate-fade-in-up" : "opacity-0"
+        className={`relative z-10 w-full max-w-[20rem] ${
+          mounted ? "" : "opacity-0"
         }`}
       >
-        {/* Logo / Titulo */}
-        <div
-          className="text-center mb-10 animate-input-appear"
-          style={{ animationDelay: "0s" }}
-        >
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-black mb-4 shadow-lg shadow-green-500/20 overflow-hidden">
+        {/* Brand */}
+        <div data-anim="brand" className="mb-12 flex flex-col items-center text-center">
+          <div className="relative mb-5 grid h-20 w-20 place-items-center overflow-hidden rounded-[1.25rem] bg-black shadow-e3 ring-1 ring-white/10">
+            <div className="sheen pointer-events-none absolute inset-0" />
             <Image
               src="/icon-512.png"
-              width={80}
-              height={80}
+              width={56}
+              height={56}
               alt="Mr. Manzana"
               priority
+              className="relative"
             />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">Mr. Manzana</h1>
-          <p className="text-zinc-400 text-sm">Ingresa tu PIN de acceso</p>
+          <h1 className="text-[1.375rem] font-semibold tracking-tight text-foreground">
+            Mr. Manzana
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Ingresa tu PIN de acceso
+          </p>
         </div>
 
         {/* PIN Inputs */}
         <div
-          className={`flex justify-center gap-3 mb-6 ${
-            error ? "animate-shake" : ""
-          }`}
+          className={`flex justify-center gap-3 ${error ? "animate-shake" : ""}`}
         >
           {digits.map((digit, index) => (
-            <div
-              key={index}
-              className="animate-input-appear"
-              style={{ animationDelay: getStaggerDelay(index) }}
-            >
+            <div key={index} data-anim="pin">
               <input
                 ref={(el) => {
                   inputRefs.current[index] = el;
@@ -191,22 +231,21 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
                 disabled={isLoading}
                 autoFocus={index === 0}
                 className={`
-                  w-16 h-16 sm:w-18 sm:h-18
-                  text-center text-2xl font-bold
-                  bg-zinc-800/50 backdrop-blur-sm
-                  border-2 rounded-xl
-                  text-white
-                  outline-none
-                  transition-all duration-200
-                  disabled:opacity-50 disabled:cursor-not-allowed
+                  h-16 w-14 sm:h-[4.25rem] sm:w-[3.75rem]
+                  rounded-2xl border text-center text-2xl font-semibold tabular-nums
+                  text-foreground caret-primary
+                  shadow-e1 outline-none backdrop-blur-sm
+                  transition-[border-color,background-color,box-shadow,transform]
+                  duration-base ease-out-quint
+                  disabled:cursor-not-allowed disabled:opacity-50
                   ${
                     error
-                      ? "border-red-500 bg-red-500/10"
+                      ? "border-destructive bg-destructive/10 shadow-e1"
                       : digit
-                      ? "border-green-400 bg-green-400/10"
-                      : "border-zinc-700 hover:border-zinc-600 focus:border-green-400"
+                      ? "border-primary/60 bg-primary/[0.07] shadow-e1"
+                      : "border-border bg-card/70 hover:border-zinc-600 focus:border-primary/70 focus:bg-card"
                   }
-                  focus:ring-2 focus:ring-green-400/20
+                  focus:ring-2 focus:ring-ring/25
                 `}
                 aria-label={`Digito ${index + 1} del PIN`}
               />
@@ -214,49 +253,46 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
           ))}
         </div>
 
+        {/* Status dots */}
+        <div data-anim="meta" className="mt-7 flex justify-center gap-2.5">
+          {digits.map((digit, index) => (
+            <div
+              key={index}
+              className={`
+                h-1.5 w-1.5 rounded-full transition-all duration-base ease-out-quint
+                ${digit ? "scale-125 bg-primary" : "bg-zinc-700"}
+              `}
+            />
+          ))}
+        </div>
+
         {/* Error Message */}
         <div
-          className={`overflow-hidden transition-all duration-200 ${
-            errorMessage ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+          className={`overflow-hidden transition-all duration-base ease-out-quint ${
+            errorMessage ? "mt-5 max-h-20 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <p className="text-red-400 text-sm text-center mb-4">
+          <p className="text-center text-sm font-medium text-destructive">
             {errorMessage}
           </p>
         </div>
 
         {/* Loading Indicator */}
         <div
-          className={`overflow-hidden transition-all duration-200 ${
-            isLoading ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+          className={`overflow-hidden transition-all duration-base ease-out-quint ${
+            isLoading ? "mt-5 max-h-20 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="flex items-center justify-center gap-2 text-zinc-400">
-            <Loader2 className="w-5 h-5 animate-spin text-green-400" />
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
             <span className="text-sm">Verificando...</span>
           </div>
         </div>
 
-        {/* Indicador de estado */}
-        <div
-          className="flex justify-center gap-2 mt-8 animate-input-appear"
-          style={{ animationDelay: "0.5s" }}
-        >
-          {digits.map((digit, index) => (
-            <div
-              key={index}
-              className={`
-                w-2 h-2 rounded-full transition-all duration-200
-                ${digit ? "bg-green-400 scale-110" : "bg-zinc-700"}
-              `}
-            />
-          ))}
-        </div>
-
         {/* Footer */}
         <p
-          className="text-zinc-500 text-xs text-center mt-8 animate-input-appear"
-          style={{ animationDelay: "0.6s" }}
+          data-anim="meta"
+          className="mt-12 text-center text-xs leading-relaxed text-muted-foreground"
         >
           Contacta al administrador si olvidaste tu PIN
         </p>

@@ -33,9 +33,13 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 shadow-lg">
-        <p className="text-zinc-300 text-sm font-medium">{label}</p>
-        <p className="text-white text-sm">{payload[0].value}</p>
+      <div className="surface-raised rounded-lg px-3 py-2 shadow-e3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground">
+          {payload[0].value}
+        </p>
       </div>
     );
   }
@@ -50,15 +54,25 @@ export function BarChart({ data, dataKey, nameKey, color = "#3b82f6" }: BarChart
           dataKey={nameKey}
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#a1a1aa", fontSize: 12 }}
+          tick={{ fill: "hsl(240 5% 60%)", fontSize: 12 }}
+          dy={4}
         />
         <YAxis
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#a1a1aa", fontSize: 12 }}
+          tick={{ fill: "hsl(240 5% 60%)", fontSize: 12 }}
+          width={32}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
-        <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+        <Tooltip
+          content={<CustomTooltip />}
+          cursor={{ fill: "hsl(240 4% 16% / 0.5)", radius: 6 }}
+        />
+        <Bar
+          dataKey={dataKey}
+          fill={color}
+          radius={[6, 6, 2, 2]}
+          maxBarSize={48}
+        />
       </RechartsBarChart>
     </ResponsiveContainer>
   );

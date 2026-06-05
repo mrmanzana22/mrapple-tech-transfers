@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { gsap, useGSAP, EASE, DURATION } from "@/lib/gsap";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,45 @@ export function TransferModal({
 
   // Dynamic technicians from Supabase
   const [tecnicos, setTecnicos] = useState<string[]>([]);
+
+  // Motion: orchestrate the body sections entering when the modal opens.
+  // Pure presentation — honors prefers-reduced-motion via gsap.matchMedia.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  useGSAP(
+    () => {
+      if (!isOpen || !bodyRef.current) return;
+      const sections = bodyRef.current.querySelectorAll("[data-modal-section]");
+      if (!sections.length) return;
+      const mm = gsap.matchMedia();
+      mm.add(
+        {
+          reduced: "(prefers-reduced-motion: reduce)",
+          ok: "(prefers-reduced-motion: no-preference)",
+        },
+        (ctx) => {
+          const { reduced } = ctx.conditions as { reduced: boolean };
+          if (reduced) {
+            gsap.set(sections, { opacity: 1, y: 0 });
+            return;
+          }
+          gsap.fromTo(
+            sections,
+            { opacity: 0, y: 12 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: DURATION.base,
+              ease: EASE.outQuint,
+              stagger: 0.05,
+              delay: 0.06,
+            }
+          );
+        }
+      );
+      return () => mm.revert();
+    },
+    { dependencies: [isOpen], scope: bodyRef }
+  );
 
   // Load technicians on mount
   useEffect(() => {
@@ -214,35 +254,37 @@ export function TransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 bg-zinc-900 border-zinc-800 max-h-[90vh] overflow-y-auto animate-scale-in">
+      <DialogContent className="sm:max-w-[500px] p-0 bg-popover border-border max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-zinc-800">
-          <DialogTitle className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
-            <ArrowRight className="w-5 h-5 text-blue-500" />
+        <DialogHeader className="p-6 pb-4 hairline-b sheen">
+          <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2.5">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 ring-1 ring-inset ring-primary/25">
+              <ArrowRight className="w-4 h-4 text-primary" />
+            </span>
             {isBatch ? `Transferir ${phones.length} Teléfonos` : "Transferir Telefono"}
           </DialogTitle>
         </DialogHeader>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
+        <div ref={bodyRef} className="p-6 space-y-6">
           {/* Phone Info Card - Single */}
           {!isBatch && phones[0] && (
-            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+            <div data-modal-section className="surface rounded-xl p-4 sheen">
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-blue-900/30 rounded-lg">
-                  <Smartphone className="w-6 h-6 text-blue-400" />
+                <div className="p-2.5 bg-secondary rounded-xl ring-1 ring-inset ring-border">
+                  <Smartphone className="w-6 h-6 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-zinc-100 truncate">
+                  <h3 className="font-semibold text-foreground truncate">
                     {phones[0].nombre}
                   </h3>
-                  <p className="text-sm text-zinc-400">
+                  <p className="text-sm text-muted-foreground font-mono tabular-nums mt-0.5">
                     IMEI: ...{phones[0].imei?.slice(-4)}
                   </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <User className="w-3 h-3 text-zinc-400" />
-                    <span className="text-xs text-zinc-400">
-                      Actual: {currentTecnico}
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      Actual: <span className="text-foreground/80 font-medium">{currentTecnico}</span>
                     </span>
                   </div>
                 </div>
@@ -252,22 +294,22 @@ export function TransferModal({
 
           {/* Phone List - Batch */}
           {isBatch && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-                <Smartphone className="w-4 h-4" />
+            <div data-modal-section className="space-y-2">
+              <label className="text-sm font-medium text-foreground/90 flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-muted-foreground" />
                 Teléfonos a transferir ({phones.length})
               </label>
-              <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/30 p-3">
+              <div className="max-h-48 overflow-y-auto space-y-2 rounded-xl border border-border bg-background/40 p-3">
                 {phones.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-zinc-800/50 border border-zinc-700/50"
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/60 ring-1 ring-inset ring-border/60"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Smartphone className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                      <Smartphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm text-zinc-200 truncate">{p.nombre}</p>
-                        <p className="text-xs text-zinc-500 flex items-center gap-1">
+                        <p className="text-sm text-foreground/90 truncate">{p.nombre}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 font-mono tabular-nums">
                           <Hash className="w-3 h-3" />
                           ...{p.imei?.slice(-8) || "N/A"}
                         </p>
@@ -277,9 +319,9 @@ export function TransferModal({
                 ))}
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <User className="w-3 h-3 text-zinc-400" />
-                <span className="text-xs text-zinc-400">
-                  Técnico actual: {currentTecnico}
+                <User className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Técnico actual: <span className="text-foreground/80 font-medium">{currentTecnico}</span>
                 </span>
               </div>
             </div>
@@ -287,22 +329,22 @@ export function TransferModal({
 
           {/* Previous Comments - Only for single phone */}
           {!isBatch && phones[0]?.updates && phones[0].updates.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
+            <div data-modal-section className="space-y-2">
+              <label className="text-sm font-medium text-foreground/90 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-muted-foreground" />
                 Comentarios Anteriores ({phones[0].updates.length})
               </label>
-              <div className="max-h-40 overflow-y-auto space-y-2 rounded-lg border border-zinc-700 bg-zinc-800/30 p-3">
+              <div className="max-h-40 overflow-y-auto space-y-2 rounded-xl border border-border bg-background/40 p-3">
                 {phones[0].updates.map((update) => (
                   <div
                     key={update.id}
-                    className="p-3 rounded-md bg-zinc-800/50 border border-zinc-700/50"
+                    className="p-3 rounded-lg bg-secondary/60 ring-1 ring-inset ring-border/60"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-blue-400">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold text-primary">
                         {update.creator?.name || "Sistema"}
                       </span>
-                      <span className="text-xs text-zinc-500 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1 tabular-nums">
                         <Clock className="w-3 h-3" />
                         {new Date(update.created_at).toLocaleDateString("es-MX", {
                           day: "numeric",
@@ -312,7 +354,7 @@ export function TransferModal({
                         })}
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-300 whitespace-pre-wrap">
+                    <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
                       {update.text_body}
                     </p>
                   </div>
@@ -322,8 +364,8 @@ export function TransferModal({
           )}
 
           {/* Target Technician Select */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">
+          <div data-modal-section className="space-y-2">
+            <label className="text-sm font-medium text-foreground/90">
               Tecnico Destino
             </label>
             <Select
@@ -331,15 +373,15 @@ export function TransferModal({
               onValueChange={setTargetTechnician}
               disabled={isLoading}
             >
-              <SelectTrigger className="w-full bg-zinc-800 border-zinc-700 focus:ring-blue-500">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecciona un tecnico (opcional)" />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectContent>
                 {availableTechnicians.map((tech) => (
                   <SelectItem
                     key={tech}
                     value={tech}
-                    className="cursor-pointer hover:bg-zinc-700"
+                    className="cursor-pointer"
                   >
                     {tech}
                   </SelectItem>
@@ -349,27 +391,27 @@ export function TransferModal({
           </div>
 
           {/* Comment Textarea */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">
+          <div data-modal-section className="space-y-2">
+            <label className="text-sm font-medium text-foreground/90">
               Comentario
             </label>
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Escribe un comentario sobre la transferencia..."
-              className="min-h-[100px] resize-none bg-zinc-800 border-zinc-700 focus:ring-blue-500"
+              className="min-h-[100px] resize-none"
               disabled={isLoading}
             />
           </div>
 
           {/* Photo Upload Zone */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">
+          <div data-modal-section className="space-y-2">
+            <label className="text-sm font-medium text-foreground/90">
               Foto del Estado
             </label>
 
             {photoPreview ? (
-              <div className="relative rounded-lg overflow-hidden border border-zinc-700 animate-photo-in">
+              <div className="relative rounded-xl overflow-hidden border border-border animate-photo-in">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoPreview}
@@ -380,12 +422,12 @@ export function TransferModal({
                   type="button"
                   onClick={removePhoto}
                   disabled={isLoading}
-                  className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors disabled:opacity-50"
+                  className="pressable absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-colors disabled:opacity-50"
                   aria-label="Eliminar foto"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
-                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 rounded text-xs text-white">
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-md text-xs text-white">
                   {photo?.name}
                 </div>
               </div>
@@ -395,12 +437,12 @@ export function TransferModal({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 className={`
-                  relative border-2 border-dashed rounded-lg p-8
-                  transition-all duration-200 cursor-pointer
+                  relative border-2 border-dashed rounded-xl p-8
+                  transition-[border-color,background-color] duration-base ease-out-quint cursor-pointer
                   ${
                     isDragging
-                      ? "border-blue-500 bg-blue-900/20"
-                      : "border-zinc-700 hover:border-zinc-600"
+                      ? "border-primary/60 bg-primary/[0.06]"
+                      : "border-border hover:border-muted-foreground/40 hover:bg-secondary/40"
                   }
                   ${isLoading ? "opacity-50 pointer-events-none" : ""}
                 `}
@@ -416,28 +458,28 @@ export function TransferModal({
                 <div className="flex flex-col items-center gap-3 text-center">
                   <div
                     className={`
-                    p-3 rounded-full
+                    p-3 rounded-full transition-colors duration-base ease-out-quint
                     ${
                       isDragging
-                        ? "bg-blue-900/40"
-                        : "bg-zinc-800"
+                        ? "bg-primary/15 ring-1 ring-inset ring-primary/25"
+                        : "bg-secondary ring-1 ring-inset ring-border"
                     }
                   `}
                   >
                     <Upload
                       className={`
-                      w-6 h-6
-                      ${isDragging ? "text-blue-500" : "text-zinc-500"}
+                      w-6 h-6 transition-colors duration-base ease-out-quint
+                      ${isDragging ? "text-primary" : "text-muted-foreground"}
                     `}
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-zinc-300">
+                    <p className="text-sm font-medium text-foreground/90">
                       {isDragging
                         ? "Suelta la imagen aqui"
                         : "Arrastra una imagen o haz clic"}
                     </p>
-                    <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       PNG, JPG hasta 5MB
                     </p>
                   </div>
@@ -448,24 +490,24 @@ export function TransferModal({
 
           {/* Error Message */}
           <div
-            className={`overflow-hidden transition-all duration-200 ${
+            className={`overflow-hidden transition-all duration-base ease-out-quint ${
               error ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <div className="p-3 bg-red-900/20 border border-red-800 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="p-3 bg-destructive/10 ring-1 ring-inset ring-destructive/25 rounded-xl">
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <DialogFooter className="p-6 pt-4 border-t border-zinc-800 gap-3 sm:gap-3">
+        <DialogFooter className="p-6 pt-4 hairline-t gap-3 sm:gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={handleClose}
             disabled={isLoading}
-            className="flex-1 sm:flex-none border-zinc-700 hover:bg-zinc-800"
+            className="flex-1 sm:flex-none"
           >
             Cancelar
           </Button>
@@ -473,7 +515,7 @@ export function TransferModal({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || (!targetTechnician && !comment && !photo)}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+            className="flex-1 sm:flex-none"
           >
             {isLoading ? (
               <>

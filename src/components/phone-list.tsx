@@ -5,6 +5,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Smartphone, SearchX, CheckSquare, ArrowRightLeft, X } from "lucide-react";
 import { PhoneCard, PhoneCardSkeleton } from "@/components/phone-card";
 import { Button } from "@/components/ui/button";
+import { Reveal } from "@/components/motion";
 import type { Phone } from "@/types";
 
 const MAX_BATCH_SIZE = 10;
@@ -93,17 +94,17 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
   // Empty state
   if (phones.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 animate-fade-in-up">
-        <div className="p-4 rounded-full bg-zinc-800/50 mb-4">
-          <SearchX className="w-12 h-12 text-zinc-500" />
+      <Reveal y={16} className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="p-5 rounded-2xl bg-secondary ring-1 ring-inset ring-border mb-5">
+          <SearchX className="w-10 h-10 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium text-zinc-300 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-1.5">
           No hay telefonos asignados
         </h3>
-        <p className="text-sm text-zinc-500 text-center max-w-sm">
+        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
           No tienes telefonos asignados en este momento. Los telefonos apareceran aqui cuando te sean asignados.
         </p>
-      </div>
+      </Reveal>
     );
   }
 
@@ -111,28 +112,24 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
   return (
     <div className="space-y-6">
       {/* Stats bar */}
-      <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 animate-fade-in-up">
+      <div className="flex items-center justify-between gap-4 p-4 rounded-2xl surface shadow-e1 sheen animate-fade-in-up">
         <div className="flex items-center gap-4">
-          <div className="p-2 rounded-lg bg-green-500/10">
-            <Smartphone className="w-5 h-5 text-green-400" />
+          <div className="p-2.5 rounded-xl bg-primary/10 ring-1 ring-inset ring-primary/20">
+            <Smartphone className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm text-zinc-400">Telefonos asignados</p>
-            <p className="text-2xl font-bold text-white">{phones.length}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Telefonos asignados</p>
+            <p className="text-2xl font-semibold text-foreground tabular-nums leading-tight mt-0.5">{phones.length}</p>
           </div>
         </div>
 
         {/* Selection toggle */}
         {onBatchTransfer && phones.length > 1 && (
           <Button
-            variant="outline"
+            variant={selectionMode ? "secondary" : "outline"}
             size="sm"
             onClick={toggleSelectionMode}
-            className={`border-zinc-700 ${
-              selectionMode
-                ? "bg-blue-500/20 text-blue-400 border-blue-500/50"
-                : "text-zinc-400 hover:text-zinc-300"
-            }`}
+            className={selectionMode ? "ring-1 ring-inset ring-primary/30 text-primary" : ""}
           >
             {selectionMode ? (
               <>
@@ -151,7 +148,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
 
       {/* Selection hint */}
       {selectionMode && selectedIds.size === 0 && (
-        <p className="text-sm text-zinc-500 text-center">
+        <p className="text-sm text-muted-foreground text-center animate-fade-in">
           Selecciona hasta {MAX_BATCH_SIZE} teléfonos para transferir
         </p>
       )}
@@ -178,14 +175,14 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
 
       {/* Floating action bar for batch transfer */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 animate-fade-in-up safe-area-bottom">
-          <div className="flex items-center gap-3 px-4 py-4 sm:py-3 sm:rounded-xl bg-zinc-900 border-t sm:border border-zinc-700 shadow-2xl shadow-black/50">
+        <div className="fixed bottom-0 left-0 right-0 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 animate-slide-up safe-area-bottom">
+          <div className="flex items-center gap-3 px-4 py-4 sm:py-3 sm:rounded-2xl glass border-t sm:border border-border shadow-e4">
             {/* Counter */}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-bold text-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/15 text-primary font-semibold text-sm tabular-nums ring-1 ring-inset ring-primary/25">
                 {selectedIds.size}
               </span>
-              <span className="text-sm text-zinc-400">
+              <span className="text-sm text-muted-foreground">
                 {selectedIds.size >= MAX_BATCH_SIZE ? (
                   <span className="text-amber-400">máximo</span>
                 ) : (
@@ -203,7 +200,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
                 variant="ghost"
                 size="sm"
                 onClick={clearSelection}
-                className="text-zinc-400 hover:text-zinc-300 px-2 sm:px-3"
+                className="px-2 sm:px-3"
               >
                 <X className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Limpiar</span>
@@ -211,7 +208,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
               <Button
                 size="sm"
                 onClick={handleBatchTransferClick}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4"
+                className="px-3 sm:px-4"
               >
                 <ArrowRightLeft className="h-4 w-4 mr-2" />
                 Transferir

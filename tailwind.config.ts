@@ -54,7 +54,33 @@ const config: Config = {
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			xl: 'calc(var(--radius) + 4px)',
+  			'2xl': 'calc(var(--radius) + 8px)'
+  		},
+  		fontFamily: {
+  			sans: ['var(--font-geist-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace']
+  		},
+  		boxShadow: {
+  			xs: 'var(--shadow-xs)',
+  			e1: 'var(--shadow-sm)',
+  			e2: 'var(--shadow-md)',
+  			e3: 'var(--shadow-lg)',
+  			e4: 'var(--shadow-xl)',
+  			accent: 'var(--shadow-accent)'
+  		},
+  		transitionTimingFunction: {
+  			'out-quint': 'var(--ease-out-quint)',
+  			standard: 'var(--ease-standard)',
+  			spring: 'var(--ease-spring)',
+  			'in-out-soft': 'var(--ease-in-out)'
+  		},
+  		transitionDuration: {
+  			fast: 'var(--duration-fast)',
+  			base: 'var(--duration-base)',
+  			slow: 'var(--duration-slow)',
+  			slower: 'var(--duration-slower)'
   		}
   	}
   },

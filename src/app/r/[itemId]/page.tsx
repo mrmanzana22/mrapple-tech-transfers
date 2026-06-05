@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Smartphone } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Smartphone, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 
 interface RepairData {
@@ -121,56 +121,64 @@ export default function RepairApprovalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background p-6">
+      {/* Ambient depth — quiet neutral wash */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,hsl(240_5%_11%/0.9),transparent_60%)]" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
         {/* Header con Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-zinc-800 rounded-3xl shadow-2xl mb-4 p-2">
+        <div className="animate-fade-in mb-9 flex flex-col items-center text-center">
+          <div className="relative mb-4 grid h-[4.5rem] w-[4.5rem] place-items-center overflow-hidden rounded-[1.25rem] bg-card shadow-e3 ring-1 ring-white/10">
+            <div className="sheen pointer-events-none absolute inset-0" />
             <Image
               src="/logo.png"
               alt="Mister Manzana"
-              width={80}
-              height={80}
-              className="object-contain"
+              width={56}
+              height={56}
+              className="relative object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-[1.375rem] font-semibold tracking-tight text-foreground">
             Mister Manzana
           </h1>
-          <p className="text-zinc-500 text-sm font-medium">Reparaciones</p>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
+            Reparaciones
+          </p>
         </div>
 
         {/* Card Principal */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="surface-raised sheen overflow-hidden rounded-[1.5rem] shadow-e4">
           {/* Loading */}
           {state === "loading" && (
-            <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-zinc-100 rounded-full mb-4">
-                <Loader2 className="w-8 h-8 text-zinc-800 animate-spin" />
+            <div className="animate-fade-in p-10 text-center">
+              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-secondary">
+                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
               </div>
-              <p className="text-zinc-500 font-medium">Cargando informacion...</p>
+              <p className="font-medium text-muted-foreground">Cargando informacion...</p>
             </div>
           )}
 
           {/* Error */}
           {state === "error" && (
-            <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-zinc-100 rounded-full mb-4">
-                <AlertCircle className="w-10 h-10 text-zinc-800" />
+            <div className="animate-fade-in p-10 text-center">
+              <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full bg-secondary ring-1 ring-border">
+                <AlertCircle className="h-9 w-9 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-bold text-zinc-900 mb-2">Oops!</h2>
-              <p className="text-zinc-500">{error}</p>
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-foreground">Oops!</h2>
+              <p className="text-muted-foreground">{error}</p>
             </div>
           )}
 
           {/* Expired */}
           {state === "expired" && (
-            <div className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-zinc-100 rounded-full mb-4">
-                <Clock className="w-10 h-10 text-zinc-600" />
+            <div className="animate-fade-in p-10 text-center">
+              <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full bg-secondary ring-1 ring-border">
+                <Clock className="h-9 w-9 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-bold text-zinc-900 mb-2">Link Expirado</h2>
-              <p className="text-zinc-500">
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-foreground">Link Expirado</h2>
+              <p className="leading-relaxed text-muted-foreground">
                 Este enlace ya no es valido. Contacta al local para mas informacion.
               </p>
             </div>
@@ -178,20 +186,22 @@ export default function RepairApprovalPage() {
 
           {/* Already decided */}
           {state === "already_decided" && (
-            <div className="p-10 text-center">
-              <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                finalDecision === "approved" ? "bg-zinc-900" : "bg-zinc-200"
+            <div className="animate-fade-in p-10 text-center">
+              <div className={`mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full ${
+                finalDecision === "approved"
+                  ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                  : "bg-secondary text-muted-foreground ring-1 ring-border"
               }`}>
                 {finalDecision === "approved" ? (
-                  <CheckCircle className="w-10 h-10 text-white" />
+                  <CheckCircle className="h-9 w-9" />
                 ) : (
-                  <XCircle className="w-10 h-10 text-zinc-600" />
+                  <XCircle className="h-9 w-9" />
                 )}
               </div>
-              <h2 className="text-xl font-bold text-zinc-900 mb-2">
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-foreground">
                 {finalDecision === "approved" ? "Ya Aprobada" : "Ya Rechazada"}
               </h2>
-              <p className="text-zinc-500">
+              <p className="text-muted-foreground">
                 Esta reparacion ya fue {finalDecision === "approved" ? "aprobada" : "rechazada"}.
               </p>
             </div>
@@ -199,29 +209,29 @@ export default function RepairApprovalPage() {
 
           {/* Ready - Show repair info */}
           {state === "ready" && repair && (
-            <>
+            <div className="animate-fade-in">
               {/* Info del equipo */}
               <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 text-white" />
+                <div className="mb-6 flex items-center gap-3.5">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-secondary ring-1 ring-border">
+                    <Smartphone className="h-6 w-6 text-foreground" />
                   </div>
-                  <div>
-                    <p className="text-sm text-zinc-500">Reparacion</p>
-                    <p className="font-semibold text-zinc-900">{repair.tipoReparacion}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Reparacion</p>
+                    <p className="truncate font-semibold text-foreground">{repair.tipoReparacion}</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-zinc-100">
-                    <span className="text-zinc-500">Cliente</span>
-                    <span className="font-medium text-zinc-900">{repair.clienteNombre}</span>
+                <div className="space-y-1">
+                  <div className="hairline-b flex items-center justify-between py-3.5">
+                    <span className="text-sm text-muted-foreground">Cliente</span>
+                    <span className="font-medium text-foreground">{repair.clienteNombre}</span>
                   </div>
 
                   {repair.serialImei && (
-                    <div className="flex items-center justify-between py-3 border-b border-zinc-100">
-                      <span className="text-zinc-500">IMEI/Serial</span>
-                      <span className="font-mono text-sm text-zinc-700 bg-zinc-100 px-2 py-1 rounded">
+                    <div className="flex items-center justify-between py-3.5">
+                      <span className="text-sm text-muted-foreground">IMEI/Serial</span>
+                      <span className="rounded-md bg-secondary px-2 py-1 font-mono text-sm tabular-nums text-foreground/90 ring-1 ring-border">
                         {repair.serialImei}
                       </span>
                     </div>
@@ -229,54 +239,56 @@ export default function RepairApprovalPage() {
                 </div>
 
                 {/* Precio destacado */}
-                <div className="mt-6 p-4 bg-zinc-900 rounded-2xl text-center">
-                  <p className="text-zinc-400 text-sm mb-1">Valor a cobrar</p>
-                  <p className="text-3xl font-bold text-white">
+                <div className="mt-6 overflow-hidden rounded-2xl bg-secondary p-5 text-center ring-1 ring-border">
+                  <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Valor a cobrar</p>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
                     {formatMoney(repair.valorACobrar)}
                   </p>
                 </div>
               </div>
 
               {/* Botones de decision */}
-              <div className="p-6 border-t border-zinc-100">
-                <p className="text-center text-zinc-600 mb-5 font-medium">
+              <div className="hairline-t p-6">
+                <p className="mb-5 text-center font-medium text-foreground">
                   ¿Deseas aprobar esta reparacion?
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => handleDecision("rejected")}
-                    className="py-4 px-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
+                    className="pressable rounded-2xl bg-secondary px-6 py-4 font-semibold text-secondary-foreground ring-1 ring-border transition-colors duration-base ease-out-quint hover:bg-accent"
                   >
                     No aprobar
                   </button>
                   <button
                     onClick={() => handleDecision("approved")}
-                    className="py-4 px-6 bg-zinc-900 hover:bg-black text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg active:scale-95"
+                    className="pressable rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground shadow-e1 transition-colors duration-base ease-out-quint hover:brightness-105"
                   >
                     Aprobar
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Confirming */}
           {state === "confirming" && (
-            <div className="p-8">
-              <div className="text-center mb-8">
-                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                  pendingDecision === "approved" ? "bg-zinc-900" : "bg-zinc-200"
+            <div className="animate-scale-in p-8">
+              <div className="mb-8 text-center">
+                <div className={`mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full ${
+                  pendingDecision === "approved"
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                    : "bg-secondary text-muted-foreground ring-1 ring-border"
                 }`}>
                   {pendingDecision === "approved" ? (
-                    <CheckCircle className="w-10 h-10 text-white" />
+                    <CheckCircle className="h-9 w-9" />
                   ) : (
-                    <XCircle className="w-10 h-10 text-zinc-600" />
+                    <XCircle className="h-9 w-9" />
                   )}
                 </div>
-                <h2 className="text-xl font-bold text-zinc-900 mb-2">
+                <h2 className="mb-2 text-xl font-semibold tracking-tight text-foreground">
                   Confirmar {pendingDecision === "approved" ? "Aprobacion" : "Rechazo"}
                 </h2>
-                <p className="text-zinc-500">
+                <p className="leading-relaxed text-muted-foreground">
                   {pendingDecision === "approved"
                     ? "Se iniciara la reparacion de tu equipo."
                     : "No se realizara la reparacion."}
@@ -285,16 +297,16 @@ export default function RepairApprovalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={cancelConfirm}
-                  className="py-4 px-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold rounded-2xl transition-all duration-200 active:scale-95"
+                  className="pressable rounded-2xl bg-secondary px-6 py-4 font-semibold text-secondary-foreground ring-1 ring-border transition-colors duration-base ease-out-quint hover:bg-accent"
                 >
                   Volver
                 </button>
                 <button
                   onClick={confirmDecision}
-                  className={`py-4 px-6 font-semibold rounded-2xl transition-all duration-200 active:scale-95 ${
+                  className={`pressable rounded-2xl px-6 py-4 font-semibold transition-colors duration-base ease-out-quint ${
                     pendingDecision === "approved"
-                      ? "bg-zinc-900 hover:bg-black text-white shadow-lg"
-                      : "bg-zinc-700 hover:bg-zinc-800 text-white"
+                      ? "bg-primary text-primary-foreground shadow-e1 hover:brightness-105"
+                      : "bg-foreground text-background hover:bg-foreground/90"
                   }`}
                 >
                   Confirmar
@@ -305,22 +317,22 @@ export default function RepairApprovalPage() {
 
           {/* Success */}
           {state === "success" && (
-            <div className="p-10 text-center">
-              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 ${
+            <div className="animate-scale-in p-10 text-center">
+              <div className={`mx-auto mb-6 grid h-24 w-24 place-items-center rounded-full ${
                 finalDecision === "approved"
-                  ? "bg-zinc-900"
-                  : "bg-zinc-300"
+                  ? "bg-primary/15 text-primary ring-1 ring-primary/30 shadow-accent"
+                  : "bg-secondary text-muted-foreground ring-1 ring-border"
               }`}>
                 {finalDecision === "approved" ? (
-                  <CheckCircle className="w-12 h-12 text-white" />
+                  <CheckCircle className="h-11 w-11" />
                 ) : (
-                  <XCircle className="w-12 h-12 text-zinc-600" />
+                  <XCircle className="h-11 w-11" />
                 )}
               </div>
-              <h2 className="text-2xl font-bold text-zinc-900 mb-3">
+              <h2 className="mb-3 text-2xl font-semibold tracking-tight text-foreground">
                 {finalDecision === "approved" ? "Aprobado!" : "Rechazado"}
               </h2>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="leading-relaxed text-muted-foreground">
                 {finalDecision === "approved"
                   ? "Gracias por tu confianza. Te avisaremos cuando tu equipo este listo para recoger."
                   : "Entendido. Si deseas explorar otras opciones, contacta al local."}
@@ -330,11 +342,12 @@ export default function RepairApprovalPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-zinc-600 text-xs">
+        <div className="animate-fade-in mt-8 flex flex-col items-center gap-1 text-center">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
             Mister Manzana Reparaciones
           </p>
-          <p className="text-zinc-700 text-xs mt-1">
+          <p className="text-xs text-muted-foreground/70">
             Servicio tecnico especializado en Apple
           </p>
         </div>

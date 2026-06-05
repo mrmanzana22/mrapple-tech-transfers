@@ -12,6 +12,7 @@ import { QuizEngine } from "@/components/training/quiz-engine";
 import { QuizResults } from "@/components/training/quiz-results";
 import { QUIZ_QUESTIONS } from "@/data/training/quiz-leccion-01-questions";
 import { QuizResultResponse, LessonProgress } from "@/types/training";
+import { Reveal } from "@/components/motion";
 
 // Map lesson IDs to their question pools (client-safe, no answers)
 const QUIZ_POOLS: Record<string, typeof QUIZ_QUESTIONS> = {
@@ -97,8 +98,8 @@ export default function EntrenamientoPage() {
   // Loading states
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-7 h-7 text-primary animate-spin" />
       </div>
     );
   }
@@ -108,17 +109,17 @@ export default function EntrenamientoPage() {
   const activeProgress = getActiveProgress();
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-background sheen">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full glass hairline-b">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-2xl">
           <div className="flex items-center gap-3">
             {view !== 'dashboard' ? (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={goToDashboard}
-                className="text-zinc-400 hover:text-white"
+                className="pressable text-muted-foreground hover:text-foreground -ml-2"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -127,17 +128,21 @@ export default function EntrenamientoPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => router.push('/tecnico')}
-                className="text-zinc-400 hover:text-white"
+                className="pressable text-muted-foreground hover:text-foreground -ml-2"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             )}
-            <div>
-              <h1 className="text-lg font-bold text-white flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-green-400" />
-                Entrenamiento
-              </h1>
-              <p className="text-xs text-zinc-500">Microsoldadura · {tecnico.nombre}</p>
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                <GraduationCap className="w-[18px] h-[18px] text-primary" />
+              </span>
+              <div className="leading-tight">
+                <h1 className="text-[15px] font-semibold text-foreground tracking-tight">
+                  Entrenamiento
+                </h1>
+                <p className="text-xs text-muted-foreground">Microsoldadura · {tecnico.nombre}</p>
+              </div>
             </div>
           </div>
 
@@ -146,56 +151,61 @@ export default function EntrenamientoPage() {
               variant="ghost"
               size="icon"
               onClick={() => refresh()}
-              className="text-zinc-400 hover:text-white"
+              className="pressable text-muted-foreground hover:text-foreground -mr-2"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-[18px] h-[18px]" />
             </Button>
           )}
         </div>
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <main className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Dashboard View */}
         {view === 'dashboard' && (
-          <div className="space-y-4 animate-fade-in-up">
+          <div className="space-y-6">
             {/* Welcome card */}
-            <div className="rounded-xl bg-gradient-to-br from-green-500/10 to-blue-500/10 border border-green-500/20 p-5">
-              <h2 className="text-base font-bold text-white mb-1">
-                Programa de Microsoldadura
-              </h2>
-              <p className="text-sm text-zinc-400">
-                Yang Changshun - iPhone Basic Theory. Completa cada lección en orden para avanzar.
-              </p>
-              {progress && (
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-400">
-                      {progress.filter(p => p.estado === 'completada').length}
+            <Reveal y={16} duration={0.5}>
+              <div className="relative overflow-hidden rounded-2xl surface-raised p-6 sheen">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-primary mb-2">
+                  Programa
+                </p>
+                <h2 className="text-xl font-semibold text-foreground tracking-tight mb-1.5">
+                  Microsoldadura
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+                  Yang Changshun · iPhone Basic Theory. Completa cada lección en orden para avanzar.
+                </p>
+                {progress && (
+                  <div className="flex items-stretch gap-5 mt-5 pt-5 hairline-t">
+                    <div>
+                      <div className="text-3xl font-semibold text-primary tabular-nums leading-none">
+                        {progress.filter(p => p.estado === 'completada').length}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1.5">Completadas</div>
                     </div>
-                    <div className="text-xs text-zinc-500">Completadas</div>
-                  </div>
-                  <div className="w-px h-8 bg-zinc-800" />
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white">
-                      {progress.length}
+                    <div className="w-px self-stretch bg-border" />
+                    <div>
+                      <div className="text-3xl font-semibold text-foreground tabular-nums leading-none">
+                        {progress.length}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1.5">Total</div>
                     </div>
-                    <div className="text-xs text-zinc-500">Total</div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </Reveal>
 
             {/* Error display */}
             {trainingError && (
-              <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4">
-                <p className="text-sm text-red-400 font-medium">Error al cargar progreso:</p>
-                <p className="text-xs text-red-300 mt-1">{trainingError.message}</p>
+              <div className="rounded-2xl bg-destructive/10 border border-destructive/30 p-4">
+                <p className="text-sm text-destructive font-medium">Error al cargar progreso</p>
+                <p className="text-xs text-destructive/70 mt-1">{trainingError.message}</p>
               </div>
             )}
 
             {/* Lesson list */}
-            <div className="space-y-3">
+            <Reveal className="space-y-3" stagger={0.07} y={20}>
               {progress?.map((lesson) => {
                 const intentos = lesson.quiz_intentos?.length || 0;
                 const mejorNota = lesson.quiz_intentos?.length
@@ -215,15 +225,15 @@ export default function EntrenamientoPage() {
                   />
                 );
               })}
-            </div>
+            </Reveal>
           </div>
         )}
 
         {/* Video View */}
         {view === 'video' && activeLeccion && (
           loadingVideo ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="w-7 h-7 text-muted-foreground animate-spin" />
             </div>
           ) : (
             <VideoPlayer

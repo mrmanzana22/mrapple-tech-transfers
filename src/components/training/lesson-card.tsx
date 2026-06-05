@@ -1,7 +1,8 @@
 "use client";
 
-import { Lock, Play, ClipboardList, CheckCircle2 } from "lucide-react";
+import { Lock, Play, ClipboardList, CheckCircle2, ChevronRight } from "lucide-react";
 import { LessonStatus } from "@/types/training";
+import { cn } from "@/lib/utils";
 
 interface LessonCardProps {
   titulo: string;
@@ -15,103 +16,110 @@ interface LessonCardProps {
 
 const STATUS_CONFIG: Record<LessonStatus, {
   icon: typeof Lock;
-  bg: string;
-  border: string;
-  text: string;
+  badgeBg: string;
+  badgeText: string;
   label: string;
-  iconColor: string;
+  accent: string;
 }> = {
   bloqueada: {
     icon: Lock,
-    bg: 'bg-zinc-800/30',
-    border: 'border-zinc-800/50',
-    text: 'text-zinc-600',
+    badgeBg: 'bg-secondary',
+    badgeText: 'text-muted-foreground',
     label: 'Bloqueada',
-    iconColor: 'text-zinc-600',
+    accent: 'text-muted-foreground',
   },
   video_pendiente: {
     icon: Play,
-    bg: 'bg-blue-500/5',
-    border: 'border-blue-500/30',
-    text: 'text-blue-400',
+    badgeBg: 'bg-sky-500/10',
+    badgeText: 'text-sky-400',
     label: 'Ver Video',
-    iconColor: 'text-blue-400',
+    accent: 'text-sky-400',
   },
   quiz_pendiente: {
     icon: ClipboardList,
-    bg: 'bg-yellow-500/5',
-    border: 'border-yellow-500/30',
-    text: 'text-yellow-400',
+    badgeBg: 'bg-amber-500/10',
+    badgeText: 'text-amber-400',
     label: 'Quiz Pendiente',
-    iconColor: 'text-yellow-400',
+    accent: 'text-amber-400',
   },
   completada: {
     icon: CheckCircle2,
-    bg: 'bg-green-500/5',
-    border: 'border-green-500/30',
-    text: 'text-green-400',
+    badgeBg: 'bg-primary/12',
+    badgeText: 'text-primary',
     label: 'Completada',
-    iconColor: 'text-green-400',
+    accent: 'text-primary',
   },
 };
 
 export function LessonCard({ titulo, orden, estado, intentos, nota, onClick }: LessonCardProps) {
   const config = STATUS_CONFIG[estado];
-  const Icon = config.icon;
   const isClickable = estado !== 'bloqueada';
 
   return (
     <button
       onClick={isClickable ? onClick : undefined}
       disabled={!isClickable}
-      className={`w-full text-left rounded-xl border ${config.border} ${config.bg} p-4 sm:p-5 transition-all ${
-        isClickable ? 'hover:scale-[1.01] active:scale-[0.99] cursor-pointer' : 'opacity-50 cursor-not-allowed'
-      }`}
+      className={cn(
+        "group w-full text-left rounded-2xl border p-4 sm:p-5",
+        isClickable
+          ? "surface card-hover pressable shadow-e1 cursor-pointer"
+          : "border-border/60 bg-card/40 opacity-60 cursor-not-allowed"
+      )}
     >
-      <div className="flex items-start gap-4">
-        {/* Lesson number + icon */}
-        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${
-          estado === 'completada' ? 'bg-green-500/20' :
-          estado === 'bloqueada' ? 'bg-zinc-800' :
-          'bg-zinc-800/80'
-        }`}>
+      <div className="flex items-center gap-4">
+        {/* Lesson number / status medallion */}
+        <div className={cn(
+          "flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ring-1",
+          estado === 'completada' ? 'bg-primary/12 ring-primary/25' :
+          estado === 'bloqueada' ? 'bg-secondary ring-border' :
+          'bg-secondary ring-border'
+        )}>
           {estado === 'completada' ? (
-            <CheckCircle2 className="w-6 h-6 text-green-400" />
+            <CheckCircle2 className="w-[22px] h-[22px] text-primary" />
           ) : estado === 'bloqueada' ? (
-            <Lock className="w-5 h-5 text-zinc-600" />
+            <Lock className="w-[18px] h-[18px] text-muted-foreground" />
           ) : (
-            <span className="text-lg font-bold text-white">{orden}</span>
+            <span className="text-lg font-semibold text-foreground tabular-nums">{orden}</span>
           )}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className={`font-semibold truncate ${estado === 'bloqueada' ? 'text-zinc-600' : 'text-white'}`}>
+            <h3 className={cn(
+              "text-[15px] font-semibold tracking-tight truncate",
+              estado === 'bloqueada' ? 'text-muted-foreground' : 'text-foreground'
+            )}>
               Lección {orden}
             </h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${config.border} ${config.text} whitespace-nowrap`}>
+            <span className={cn(
+              "text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap",
+              config.badgeBg, config.badgeText
+            )}>
               {config.label}
             </span>
           </div>
-          <p className={`text-sm ${estado === 'bloqueada' ? 'text-zinc-700' : 'text-zinc-400'}`}>
+          <p className={cn(
+            "text-sm leading-snug truncate",
+            estado === 'bloqueada' ? 'text-muted-foreground/70' : 'text-muted-foreground'
+          )}>
             {titulo}
           </p>
           {estado === 'quiz_pendiente' && intentos > 0 && (
-            <p className="text-xs text-yellow-400/70 mt-1">
+            <p className="text-xs text-amber-400/80 mt-1 tabular-nums">
               Intento {intentos}/3 {nota !== undefined && `· Mejor nota: ${nota}/10`}
             </p>
           )}
           {estado === 'completada' && nota !== undefined && (
-            <p className="text-xs text-green-400/70 mt-1">
+            <p className="text-xs text-primary/80 mt-1 tabular-nums">
               Aprobado con {nota}/10
             </p>
           )}
         </div>
 
-        {/* Arrow */}
+        {/* Chevron affordance */}
         {isClickable && (
-          <Icon className={`w-5 h-5 flex-shrink-0 mt-1 ${config.iconColor}`} />
+          <ChevronRight className="w-5 h-5 flex-shrink-0 text-muted-foreground/60 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5 group-hover:text-foreground" />
         )}
       </div>
     </button>

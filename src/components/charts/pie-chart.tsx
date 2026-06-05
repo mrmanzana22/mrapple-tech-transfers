@@ -41,10 +41,13 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : 0;
 
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 shadow-lg">
-        <p className="text-zinc-300 text-sm font-medium">{data.name}</p>
-        <p className="text-white text-sm">
-          {data.value} ({percentage}%)
+      <div className="surface-raised rounded-lg px-3 py-2 shadow-e3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {data.name}
+        </p>
+        <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+          {data.value}{" "}
+          <span className="font-normal text-muted-foreground">({percentage}%)</span>
         </p>
       </div>
     );
@@ -111,10 +114,13 @@ export function PieChart({ data }: PieChartProps) {
           cy="50%"
           labelLine={false}
           label={renderCustomLabel}
-          outerRadius="80%"
-          innerRadius="40%"
+          outerRadius="82%"
+          innerRadius="56%"
+          paddingAngle={2}
+          cornerRadius={6}
           dataKey="value"
-          strokeWidth={0}
+          stroke="hsl(240 5% 9%)"
+          strokeWidth={3}
         >
           {dataWithTotal.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -122,7 +128,11 @@ export function PieChart({ data }: PieChartProps) {
         </Pie>
         <Tooltip content={<CustomTooltip />} />
         <Legend
-          formatter={(value) => <span className="text-zinc-400 text-sm">{value}</span>}
+          iconType="circle"
+          iconSize={8}
+          formatter={(value) => (
+            <span className="text-sm text-muted-foreground">{value}</span>
+          )}
         />
       </RechartsPieChart>
     </ResponsiveContainer>
