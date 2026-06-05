@@ -80,12 +80,13 @@ export function DetailSheet({
         <DialogPrimitive.Content
           className={cn(
             "fixed z-50 flex flex-col bg-popover shadow-e4 focus:outline-none",
-            // Tarjeta CENTRADA en pantalla (móvil y desktop): inset + margin auto
-            // la centran en ambos ejes. En móvil con margen lateral y safe-area
-            // arriba/abajo; usa dvh para respetar la barra del navegador.
-            "inset-x-3 inset-y-[max(1rem,env(safe-area-inset-bottom))] m-auto h-fit w-auto max-w-lg max-h-[85dvh] rounded-3xl border border-border",
-            // Desktop: misma tarjeta centrada, sin el margen lateral apretado.
-            "sm:inset-0 sm:w-full sm:max-h-[85vh]",
+            // Tarjeta CENTRADA en pantalla (móvil y desktop). Recetario probado:
+            // inset-0 + m-auto + h-fit centra en ambos ejes y deja que la altura
+            // se ajuste al contenido (cap en dvh). El margen lateral en móvil se
+            // da por ancho (no por inset, que colapsaba el cuerpo flex).
+            "inset-0 m-auto h-fit w-[calc(100%-1.5rem)] max-w-lg max-h-[85dvh] rounded-3xl border border-border",
+            // Desktop: ancho completo del max-w y un poco más de alto.
+            "sm:w-full sm:max-h-[85vh]",
             "duration-slow ease-out-quint",
             // Entra como zoom+fade desde el centro (ya no slide desde abajo).
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
