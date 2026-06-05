@@ -53,8 +53,13 @@ export default function TecnicoPage() {
 
   // Team state (Equipo tab)
   const [teamData, setTeamData] = useState<TecnicoWithPhones[]>([]);
-  const [expandedTecnicos, setExpandedTecnicos] = useState<Set<string>>(new Set());
   const [loadingTeamPhones, setLoadingTeamPhones] = useState<Set<string>>(new Set());
+  // Detalle de equipos de un técnico (sheet) + búsqueda por IMEI dentro de él.
+  const [equipoDetalle, setEquipoDetalle] = useState<string | null>(null);
+  const [equipoBusqueda, setEquipoBusqueda] = useState("");
+  // Lo mismo para reparaciones de clientes de un técnico.
+  const [equipoCliDetalle, setEquipoCliDetalle] = useState<string | null>(null);
+  const [equipoCliBusqueda, setEquipoCliBusqueda] = useState("");
   const [teamLoading, setTeamLoading] = useState(false);
   const [equipoSubTab, setEquipoSubTab] = useState<"telefonos" | "clientes">("telefonos");
   const [teamClientesData, setTeamClientesData] = useState<{ tecnico: string; reparaciones: ReparacionCliente[] }[]>([]);
@@ -135,6 +140,47 @@ export default function TecnicoPage() {
     );
   }, [phones, debouncedSearch]);
 
+  // Técnico seleccionado para el sheet de equipos + sus teléfonos filtrados.
+  const equipoTecData = useMemo(
+    () =>
+      equipoDetalle
+        ? teamData.find((t) => t.nombre === equipoDetalle) ?? null
+        : null,
+    [equipoDetalle, teamData]
+  );
+  const equipoPhonesFiltradas = useMemo(() => {
+    const lista = equipoTecData?.phones ?? [];
+    const q = equipoBusqueda.toLowerCase().trim();
+    if (!q) return lista;
+    return lista.filter(
+      (p) =>
+        p.imei?.toLowerCase().includes(q) ||
+        p.nombre?.toLowerCase().includes(q) ||
+        p.color?.toLowerCase().includes(q)
+    );
+  }, [equipoTecData, equipoBusqueda]);
+
+  // Técnico seleccionado para el sheet de clientes + sus reparaciones filtradas.
+  const equipoCliData = useMemo(
+    () =>
+      equipoCliDetalle
+        ? teamClientesData.find((t) => t.tecnico === equipoCliDetalle) ?? null
+        : null,
+    [equipoCliDetalle, teamClientesData]
+  );
+  const equipoCliFiltradas = useMemo(() => {
+    const lista = equipoCliData?.reparaciones ?? [];
+    const q = equipoCliBusqueda.toLowerCase().trim();
+    if (!q) return lista;
+    return lista.filter(
+      (r) =>
+        `${r.cliente_nombre} ${r.cliente_apellido}`.toLowerCase().includes(q) ||
+        r.nombre?.toLowerCase().includes(q) ||
+        r.imei?.toLowerCase().includes(q) ||
+        r.tipo_reparacion?.toLowerCase().includes(q)
+    );
+  }, [equipoCliData, equipoCliBusqueda]);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -173,9 +219,6 @@ export default function TecnicoPage() {
     try {
       initialData = await fetchAllTecnicosWithPhones();
       setTeamData(initialData);
-      if (initialData.length > 0) {
-        setExpandedTecnicos(new Set([initialData[0].nombre]));
-      }
     } catch (error) {
       console.error("Error loading team data:", error);
     } finally {
@@ -208,57 +251,47 @@ export default function TecnicoPage() {
   }, [activeTab, teamData.length, loadTeamData]);
 
   // Toggle tecnico expansion
-  const toggleTecnico = useCallback(async (nombre: string) => {
-    const shouldExpand = !expandedTecnicos.has(nombre);
+  // Abre el sheet de equipos de un técnico y carga sus teléfonos lazy.
+  const openTecnicoDetalle = useCallback(
+    async (nombre: string) => {
+      setEquipoBusqueda("");
+      setEquipoDetalle(nombre);
 
-    setExpandedTecnicos((prev) => {
-      const next = new Set(prev);
-      if (next.has(nombre)) {
-        next.delete(nombre);
-      } else {
-        next.add(nombre);
-      }
-      return next;
-    });
+      const tecnicoData = teamData.find((t) => t.nombre === nombre);
+      if ((tecnicoData?.phones?.length || 0) > 0) return;
 
-    if (!shouldExpand) return;
-
-    const tecnicoData = teamData.find((t) => t.nombre === nombre);
-    const alreadyLoaded = (tecnicoData?.phones?.length || 0) > 0;
-
-    if (alreadyLoaded) return;
-
-    setLoadingTeamPhones((prev) => {
-      const next = new Set(prev);
-      next.add(nombre);
-      return next;
-    });
-
-    try {
-      const result = await getPhonesByTecnico(nombre);
-      if (result.success && result.data) {
-        setTeamData((prev) =>
-          prev.map((item) =>
-            item.nombre === nombre
-              ? {
-                  ...item,
-                  phones: result.data ?? [],
-                  phonesCount: result.data?.length ?? item.phonesCount ?? 0,
-                }
-              : item
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Error loading phones for tecnico:", nombre, error);
-    } finally {
       setLoadingTeamPhones((prev) => {
         const next = new Set(prev);
-        next.delete(nombre);
+        next.add(nombre);
         return next;
       });
-    }
-  }, [expandedTecnicos, teamData]);
+      try {
+        const result = await getPhonesByTecnico(nombre);
+        if (result.success && result.data) {
+          setTeamData((prev) =>
+            prev.map((item) =>
+              item.nombre === nombre
+                ? {
+                    ...item,
+                    phones: result.data ?? [],
+                    phonesCount: result.data?.length ?? item.phonesCount ?? 0,
+                  }
+                : item
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error loading phones for tecnico:", nombre, error);
+      } finally {
+        setLoadingTeamPhones((prev) => {
+          const next = new Set(prev);
+          next.delete(nombre);
+          return next;
+        });
+      }
+    },
+    [teamData]
+  );
 
   // Load team clientes data
   const loadTeamClientesData = useCallback(async () => {
@@ -280,14 +313,6 @@ export default function TecnicoPage() {
           .filter((r) => r.reparaciones.length > 0)
           .sort((a, b) => b.reparaciones.length - a.reparaciones.length)
       );
-      // Expand first tecnico by default
-      if (results.length > 0 && results[0].reparaciones.length > 0) {
-        setExpandedTecnicos((prev) => {
-          const next = new Set(prev);
-          next.add(results[0].tecnico);
-          return next;
-        });
-      }
     } catch (error) {
       console.error("Error loading team clientes:", error);
     } finally {
@@ -803,71 +828,35 @@ export default function TecnicoPage() {
                     No hay técnicos disponibles
                   </div>
                 ) : (
-                  teamData.map((tec, i) => {
-                    const isExpanded = expandedTecnicos.has(tec.nombre);
-                    return (
-                    <Reveal key={tec.nombre} y={18} delay={Math.min(i * 0.04, 0.32)}>
-                    <Card className={`overflow-hidden transition-[border-color] duration-base ease-out-quint ${isExpanded ? "border-border" : ""}`}>
-                      <button
-                        onClick={() => toggleTecnico(tec.nombre)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors duration-fast ease-out-quint"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center">
-                            <UserCircle className="w-6 h-6 text-muted-foreground" />
-                          </div>
-                          <div className="text-left">
-                            <h3 className="font-semibold text-foreground">{tec.nombre}</h3>
-                            <p className="text-sm text-muted-foreground tabular-nums">
-                              {(tec.phonesCount ?? tec.phones.length)} teléfono{(tec.phonesCount ?? tec.phones.length) !== 1 ? "s" : ""}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className={`w-5 h-5 text-muted-foreground transition-transform duration-base ease-out-quint ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                      <div
-                        className={`grid transition-[grid-template-rows] duration-base ease-out-quint ${
-                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                        }`}
-                      >
-                        <div
-                          className={`overflow-hidden transition-opacity duration-base ease-out-quint ${
-                            isExpanded ? "opacity-100 delay-75" : "opacity-0"
-                          }`}
-                        >
-                          <CardContent className="pt-0 pb-4 px-4 hairline-t">
-                            {loadingTeamPhones.has(tec.nombre) ? (
-                              <div className="grid gap-3 mt-4">
-                                {[1, 2].map((i) => (
-                                  <Skeleton key={i} className="h-24 w-full bg-secondary" />
-                                ))}
-                              </div>
-                            ) : tec.phones.length === 0 ? (
-                              <p className="text-muted-foreground text-sm py-4 text-center">
-                                Sin teléfonos asignados
-                              </p>
-                            ) : (
-                              <div className="grid gap-3 mt-4">
-                                {tec.phones.map((phone) => (
-                                  <PhoneCard
-                                    key={phone.id}
-                                    phone={phone}
-                                    showTransferButton={false}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </div>
-                      </div>
-                    </Card>
-                    </Reveal>
-                    );
-                  })
+                  <div className="space-y-3">
+                    {teamData.map((tec, i) => {
+                      const count = tec.phonesCount ?? tec.phones.length;
+                      return (
+                        <Reveal key={tec.nombre} y={18} delay={Math.min(i * 0.04, 0.32)}>
+                          <button
+                            type="button"
+                            onClick={() => openTecnicoDetalle(tec.nombre)}
+                            className="group block w-full text-left"
+                          >
+                            <Card className="sheen card-hover pressable-sm">
+                              <CardContent className="p-4 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center shrink-0">
+                                  <UserCircle className="w-6 h-6 text-muted-foreground" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-foreground truncate">{tec.nombre}</h3>
+                                  <p className="text-sm text-muted-foreground tabular-nums">
+                                    {count} teléfono{count !== 1 ? "s" : ""}
+                                  </p>
+                                </div>
+                                <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/50 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5" />
+                              </CardContent>
+                            </Card>
+                          </button>
+                        </Reveal>
+                      );
+                    })}
+                  </div>
                 )}
               </>
             )}
@@ -891,76 +880,35 @@ export default function TecnicoPage() {
                     No hay reparaciones de clientes asignadas
                   </div>
                 ) : (
-                  teamClientesData.map((item, i) => {
-                    const isExpanded = expandedTecnicos.has(item.tecnico);
-                    return (
-                    <Reveal key={item.tecnico} y={18} delay={Math.min(i * 0.04, 0.32)}>
-                    <Card className="overflow-hidden">
-                      <button
-                        onClick={() => toggleTecnico(item.tecnico)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors duration-fast ease-out-quint"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center">
-                            <UserCircle className="w-6 h-6 text-muted-foreground" />
-                          </div>
-                          <div className="text-left">
-                            <h3 className="font-semibold text-foreground">{item.tecnico}</h3>
-                            <p className="text-sm text-muted-foreground tabular-nums">
-                              {item.reparaciones.length} reparación{item.reparaciones.length !== 1 ? "es" : ""}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className={`w-5 h-5 text-muted-foreground transition-transform duration-base ease-out-quint ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                      <div
-                        className={`grid transition-[grid-template-rows] duration-base ease-out-quint ${
-                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                        }`}
-                      >
-                        <div
-                          className={`overflow-hidden transition-opacity duration-base ease-out-quint ${
-                            isExpanded ? "opacity-100 delay-75" : "opacity-0"
-                          }`}
+                  <div className="space-y-3">
+                    {teamClientesData.map((item, i) => (
+                      <Reveal key={item.tecnico} y={18} delay={Math.min(i * 0.04, 0.32)}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEquipoCliBusqueda("");
+                            setEquipoCliDetalle(item.tecnico);
+                          }}
+                          className="group block w-full text-left"
                         >
-                          <CardContent className="pt-0 pb-2 px-4 hairline-t">
-                            <div className="divide-y divide-border mt-2">
-                              {item.reparaciones.map((rep) => (
-                                <button
-                                  key={rep.id}
-                                  type="button"
-                                  onClick={() => setRepDetalle(rep)}
-                                  className="group -mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-xl px-2 py-3 text-left transition-colors duration-fast ease-out-quint hover:bg-accent/50"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="text-sm text-foreground truncate">
-                                      {rep.cliente_nombre} {rep.cliente_apellido}
-                                    </p>
-                                    <p className="text-xs text-foreground/70 mt-0.5">
-                                      {rep.nombre}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-0.5 font-mono tabular-nums">
-                                      {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
-                                    </p>
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-1.5">
-                                    {getEstadoBadge(rep.estado)}
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5" />
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </div>
-                      </div>
-                    </Card>
-                    </Reveal>
-                    );
-                  })
+                          <Card className="sheen card-hover pressable-sm">
+                            <CardContent className="p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-secondary ring-1 ring-inset ring-border flex items-center justify-center shrink-0">
+                                <UserCircle className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-foreground truncate">{item.tecnico}</h3>
+                                <p className="text-sm text-muted-foreground tabular-nums">
+                                  {item.reparaciones.length} reparación{item.reparaciones.length !== 1 ? "es" : ""}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/50 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5" />
+                            </CardContent>
+                          </Card>
+                        </button>
+                      </Reveal>
+                    ))}
+                  </div>
                 )}
               </>
             )}
@@ -971,6 +919,143 @@ export default function TecnicoPage() {
       </main>
 
       {transferJob && <TransferProgress job={transferJob} />}
+
+      {/* Sheet de equipos de un técnico, con buscador por IMEI (solo lectura) */}
+      <DetailSheet
+        open={!!equipoDetalle}
+        onOpenChange={(o) => !o && setEquipoDetalle(null)}
+        title={equipoDetalle ?? "Equipos"}
+        description={
+          equipoTecData
+            ? `${equipoTecData.phonesCount ?? equipoTecData.phones.length} equipo${
+                (equipoTecData.phonesCount ?? equipoTecData.phones.length) !== 1 ? "s" : ""
+              }`
+            : undefined
+        }
+      >
+        <div className="space-y-4 pb-2">
+          {/* Buscador por IMEI / modelo, fijo arriba al hacer scroll */}
+          <div className="sticky top-0 z-10 -mt-1 bg-popover pt-1 pb-1">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                inputMode="search"
+                value={equipoBusqueda}
+                onChange={(e) => setEquipoBusqueda(e.target.value)}
+                placeholder="Buscar por IMEI o modelo…"
+                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-zinc-600 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
+              />
+              {equipoBusqueda && (
+                <button
+                  onClick={() => setEquipoBusqueda("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors duration-fast"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Lista de equipos */}
+          {equipoDetalle && loadingTeamPhones.has(equipoDetalle) ? (
+            <div className="grid gap-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-24 w-full bg-secondary" />
+              ))}
+            </div>
+          ) : (equipoTecData?.phones.length ?? 0) === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Sin teléfonos asignados
+            </p>
+          ) : equipoPhonesFiltradas.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Sin resultados para “{equipoBusqueda.trim()}”
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              {equipoPhonesFiltradas.map((phone) => (
+                <PhoneCard key={phone.id} phone={phone} showTransferButton={false} />
+              ))}
+            </div>
+          )}
+        </div>
+      </DetailSheet>
+
+      {/* Sheet de reparaciones de clientes de un técnico, con buscador */}
+      <DetailSheet
+        open={!!equipoCliDetalle}
+        onOpenChange={(o) => !o && setEquipoCliDetalle(null)}
+        title={equipoCliDetalle ?? "Clientes"}
+        description={
+          equipoCliData
+            ? `${equipoCliData.reparaciones.length} reparación${
+                equipoCliData.reparaciones.length !== 1 ? "es" : ""
+              }`
+            : undefined
+        }
+      >
+        <div className="space-y-4 pb-2">
+          {/* Buscador por cliente, IMEI o tipo, fijo arriba */}
+          <div className="sticky top-0 z-10 -mt-1 bg-popover pt-1 pb-1">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                inputMode="search"
+                value={equipoCliBusqueda}
+                onChange={(e) => setEquipoCliBusqueda(e.target.value)}
+                placeholder="Buscar por cliente, IMEI o tipo…"
+                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-zinc-600 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
+              />
+              {equipoCliBusqueda && (
+                <button
+                  onClick={() => setEquipoCliBusqueda("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors duration-fast"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Lista de reparaciones */}
+          {equipoCliFiltradas.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {equipoCliBusqueda.trim()
+                ? `Sin resultados para “${equipoCliBusqueda.trim()}”`
+                : "Sin reparaciones"}
+            </p>
+          ) : (
+            <div className="divide-y divide-border overflow-hidden rounded-2xl ring-1 ring-inset ring-border">
+              {equipoCliFiltradas.map((rep) => (
+                <button
+                  key={rep.id}
+                  type="button"
+                  onClick={() => setRepDetalle(rep)}
+                  className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-fast ease-out-quint hover:bg-accent/50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-foreground">
+                      {rep.cliente_nombre} {rep.cliente_apellido}
+                    </p>
+                    <p className="mt-0.5 text-xs text-foreground/70">{rep.nombre}</p>
+                    <p className="mt-0.5 font-mono tabular-nums text-xs text-muted-foreground">
+                      {rep.tipo_reparacion} • ...{rep.imei?.slice(-8) || "Sin IMEI"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {getEstadoBadge(rep.estado)}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-base ease-out-quint group-hover:translate-x-0.5" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </DetailSheet>
 
       {/* Bottom-sheet de detalle de reparación (vista del equipo, solo lectura) */}
       <DetailSheet

@@ -218,7 +218,7 @@ export function TransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 bg-popover border-border max-h-[90vh] overflow-y-auto">
+      <DialogContent className="p-0 gap-0 bg-popover border-border overflow-hidden max-h-[90vh] sm:max-h-[86vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-3xl lg:max-w-4xl">
         {/* Header */}
         <DialogHeader className="p-6 pb-4 hairline-b sheen">
           <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2.5">
@@ -229,8 +229,13 @@ export function TransferModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Body */}
-        <div className="p-6 space-y-6">
+        {/* Body — 1 columna en móvil, 2 columnas (horizontal) en desktop/tablet.
+            El cuerpo es la fila flexible del grid: scrollea internamente solo si
+            hiciera falta; header y footer quedan siempre fijos a la vista. */}
+        <div className="min-h-0 overflow-y-auto p-6 sm:overflow-hidden">
+          <div className="space-y-6 sm:grid sm:grid-cols-2 sm:gap-6 sm:space-y-0 sm:h-full sm:min-h-0">
+            {/* Columna IZQUIERDA: equipos a transferir + técnico actual */}
+            <div className="space-y-4 sm:flex sm:flex-col sm:min-h-0">
           {/* Phone Info Card - Single */}
           {!isBatch && phones[0] && (
             <div data-modal-section className="surface rounded-xl p-4 sheen">
@@ -258,12 +263,12 @@ export function TransferModal({
 
           {/* Phone List - Batch */}
           {isBatch && (
-            <div data-modal-section className="space-y-2">
-              <label className="text-sm font-medium text-foreground/90 flex items-center gap-2">
+            <div data-modal-section className="space-y-2 sm:flex sm:flex-col sm:min-h-0 sm:flex-1">
+              <label className="text-sm font-medium text-foreground/90 flex items-center gap-2 sm:shrink-0">
                 <Smartphone className="w-4 h-4 text-muted-foreground" />
                 Teléfonos a transferir ({phones.length})
               </label>
-              <div className="max-h-48 overflow-y-auto space-y-2 rounded-xl border border-border bg-background/40 p-3">
+              <div className="max-h-48 sm:max-h-none sm:flex-1 sm:min-h-0 overflow-y-auto space-y-2 rounded-xl border border-border bg-background/40 p-3">
                 {phones.map((p) => (
                   <div
                     key={p.id}
@@ -327,6 +332,9 @@ export function TransferModal({
             </div>
           )}
 
+            </div>
+            {/* Columna DERECHA: técnico destino + comentario + foto */}
+            <div className="space-y-4 sm:min-h-0 sm:overflow-y-auto sm:pr-0.5">
           {/* Target Technician Select */}
           <div data-modal-section className="space-y-2">
             <label className="text-sm font-medium text-foreground/90">
@@ -380,7 +388,7 @@ export function TransferModal({
                 <img
                   src={photoPreview}
                   alt="Preview"
-                  className="w-full h-64 object-cover"
+                  className="w-full h-40 sm:h-36 object-cover"
                 />
                 <button
                   type="button"
@@ -401,7 +409,7 @@ export function TransferModal({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 className={`
-                  relative border-2 border-dashed rounded-xl p-8
+                  relative border-2 border-dashed rounded-xl p-5 sm:p-6
                   transition-[border-color,background-color] duration-base ease-out-quint cursor-pointer
                   ${
                     isDragging
@@ -460,6 +468,8 @@ export function TransferModal({
           >
             <div className="p-3 bg-destructive/10 ring-1 ring-inset ring-destructive/25 rounded-xl">
               <p className="text-sm text-destructive">{error}</p>
+            </div>
+          </div>
             </div>
           </div>
         </div>
