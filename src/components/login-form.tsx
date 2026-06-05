@@ -181,7 +181,7 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
     >
       {/* Ambient depth — quiet neutral wash + a single, restrained accent bloom */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,hsl(240_5%_11%/0.9),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,hsl(var(--vignette)),transparent_60%)]" />
         <div className="absolute left-1/2 top-[38%] h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
       </div>
 
@@ -243,7 +243,7 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
                       ? "border-destructive bg-destructive/10 shadow-e1"
                       : digit
                       ? "border-primary/60 bg-primary/[0.07] shadow-e1"
-                      : "border-border bg-card/70 hover:border-zinc-600 focus:border-primary/70 focus:bg-card"
+                      : "border-border bg-card/70 hover:border-muted-foreground/40 focus:border-primary/70 focus:bg-card"
                   }
                   focus:ring-2 focus:ring-ring/25
                 `}
@@ -260,7 +260,7 @@ export function LoginForm({ onSuccess, onLogin }: LoginFormProps) {
               key={index}
               className={`
                 h-1.5 w-1.5 rounded-full transition-all duration-base ease-out-quint
-                ${digit ? "scale-125 bg-primary" : "bg-zinc-700"}
+                ${digit ? "scale-125 bg-primary" : "bg-muted-foreground/30"}
               `}
             />
           ))}

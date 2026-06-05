@@ -167,7 +167,7 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
           {/* Outer glow */}
           <div
             className={cn(
-              "absolute inset-0 rounded-full bg-slate-800/50 blur-xl transform scale-150",
+              "absolute inset-0 rounded-full bg-muted/50 blur-xl transform scale-150",
               "opacity-50"
             )}
           />
@@ -176,8 +176,8 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
           <div
             className={cn(
               "relative flex items-center justify-center rounded-2xl",
-              "bg-gradient-to-br from-slate-800 to-slate-900",
-              "border border-slate-700/50",
+              "bg-gradient-to-br from-muted to-muted",
+              "border border-border/50",
               "shadow-lg shadow-black/20",
               sizeConfig.iconWrapper
             )}
@@ -187,7 +187,7 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
 
             <Icon
               className={cn(
-                "relative text-slate-500",
+                "relative text-muted-foreground",
                 sizeConfig.icon
               )}
               strokeWidth={1.5}
@@ -195,16 +195,16 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
           </div>
 
           {/* Decorative dots */}
-          <div className="absolute -right-1 -top-1 w-2 h-2 rounded-full bg-slate-700" />
-          <div className="absolute -left-2 top-1/2 w-1.5 h-1.5 rounded-full bg-slate-700/70" />
-          <div className="absolute right-0 -bottom-2 w-1 h-1 rounded-full bg-slate-700/50" />
+          <div className="absolute -right-1 -top-1 w-2 h-2 rounded-full bg-muted" />
+          <div className="absolute -left-2 top-1/2 w-1.5 h-1.5 rounded-full bg-muted/70" />
+          <div className="absolute right-0 -bottom-2 w-1 h-1 rounded-full bg-muted/50" />
         </div>
 
         {/* Text content */}
         <div className="max-w-xs">
           <h3
             className={cn(
-              "font-semibold text-slate-200 mb-2",
+              "font-semibold text-foreground mb-2",
               sizeConfig.title
             )}
           >
@@ -214,7 +214,7 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
           {displayDescription && (
             <p
               className={cn(
-                "text-slate-500 leading-relaxed",
+                "text-muted-foreground leading-relaxed",
                 sizeConfig.description
               )}
             >
@@ -241,7 +241,7 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
                 onClick={onSecondaryAction}
                 variant="outline"
                 size={sizeConfig.buttonSize}
-                className="border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800 pressable"
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-muted pressable"
               >
                 {secondaryActionLabel}
               </Button>

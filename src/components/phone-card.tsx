@@ -49,7 +49,7 @@ const getEstadoConfig = (estado: string) => {
     },
     Reparacion: {
       label: "En Reparacion",
-      className: "bg-amber-500/15 text-amber-400 ring-1 ring-inset ring-amber-500/25",
+      className: "bg-amber-500/15 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-500/25",
     },
     Pendiente: {
       label: "Pendiente",
@@ -57,7 +57,7 @@ const getEstadoConfig = (estado: string) => {
     },
     Stock: {
       label: "Stock",
-      className: "bg-sky-500/15 text-sky-400 ring-1 ring-inset ring-sky-500/25",
+      className: "bg-sky-500/15 text-sky-600 dark:text-sky-400 ring-1 ring-inset ring-sky-500/25",
     },
   };
   return config[estado] || config.Pendiente;
@@ -66,8 +66,8 @@ const getEstadoConfig = (estado: string) => {
 const getGradoConfig = (grado: string) => {
   const config: Record<string, { label: string; className: string }> = {
     A: { label: "Grado A", className: "bg-primary/10 text-primary" },
-    B: { label: "Grado B", className: "bg-amber-500/10 text-amber-400" },
-    C: { label: "Grado C", className: "bg-red-500/10 text-red-400" },
+    B: { label: "Grado B", className: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+    C: { label: "Grado C", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
   };
   return config[grado] || { label: grado, className: "bg-secondary text-muted-foreground" };
 };
@@ -75,8 +75,8 @@ const getGradoConfig = (grado: string) => {
 const getBatteryColor = (percentage: string): string => {
   const num = parseInt(percentage) || 0;
   if (num >= 80) return "text-primary";
-  if (num >= 50) return "text-amber-400";
-  return "text-red-400";
+  if (num >= 50) return "text-amber-700 dark:text-amber-400";
+  return "text-red-600 dark:text-red-400";
 };
 
 const formatDate = (dateString: string): string => {
@@ -165,7 +165,7 @@ function PhoneCardComponent({
             <div className="flex items-center gap-2 flex-shrink-0">
               {phone.tiene_comentarios && (
                 <div className="p-1.5 rounded-md bg-sky-500/15 ring-1 ring-inset ring-sky-500/25">
-                  <MessageSquare className="h-3.5 w-3.5 text-sky-400" />
+                  <MessageSquare className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                 </div>
               )}
               <Badge
@@ -218,8 +218,8 @@ function PhoneCardComponent({
           {phone.review && (
             <div className="mt-3 p-3 rounded-xl bg-amber-500/[0.08] ring-1 ring-inset ring-amber-500/20">
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-200/90 leading-relaxed">
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 dark:text-amber-200/90 leading-relaxed">
                   {phone.review}
                 </p>
               </div>

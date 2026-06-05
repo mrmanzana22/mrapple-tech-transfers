@@ -574,10 +574,10 @@ export default function TecnicoPage() {
       return <Badge className="border-transparent bg-primary/15 text-primary ring-1 ring-inset ring-primary/25">{estado}</Badge>;
     }
     if (estadoLower.includes("pendiente") || estadoLower.includes("espera")) {
-      return <Badge className="border-transparent bg-amber-500/15 text-amber-400 ring-1 ring-inset ring-amber-500/25">{estado}</Badge>;
+      return <Badge className="border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-500/25">{estado}</Badge>;
     }
     if (estadoLower.includes("proceso") || estadoLower.includes("reparando")) {
-      return <Badge className="border-transparent bg-sky-500/15 text-sky-400 ring-1 ring-inset ring-sky-500/25">{estado}</Badge>;
+      return <Badge className="border-transparent bg-sky-500/15 text-sky-600 dark:text-sky-400 ring-1 ring-inset ring-sky-500/25">{estado}</Badge>;
     }
     return <Badge className="border-transparent bg-secondary text-muted-foreground ring-1 ring-inset ring-border">{estado}</Badge>;
   };
@@ -944,7 +944,7 @@ export default function TecnicoPage() {
                 value={equipoBusqueda}
                 onChange={(e) => setEquipoBusqueda(e.target.value)}
                 placeholder="Buscar por IMEI o modelo…"
-                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-zinc-600 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
+                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-muted-foreground/40 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
               />
               {equipoBusqueda && (
                 <button
@@ -1007,7 +1007,7 @@ export default function TecnicoPage() {
                 value={equipoCliBusqueda}
                 onChange={(e) => setEquipoCliBusqueda(e.target.value)}
                 placeholder="Buscar por cliente, IMEI o tipo…"
-                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-zinc-600 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
+                className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-muted-foreground/40 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
               />
               {equipoCliBusqueda && (
                 <button

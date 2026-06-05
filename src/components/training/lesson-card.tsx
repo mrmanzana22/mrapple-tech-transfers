@@ -31,16 +31,16 @@ const STATUS_CONFIG: Record<LessonStatus, {
   video_pendiente: {
     icon: Play,
     badgeBg: 'bg-sky-500/10',
-    badgeText: 'text-sky-400',
+    badgeText: 'text-sky-600 dark:text-sky-400',
     label: 'Ver Video',
-    accent: 'text-sky-400',
+    accent: 'text-sky-600 dark:text-sky-400',
   },
   quiz_pendiente: {
     icon: ClipboardList,
     badgeBg: 'bg-amber-500/10',
-    badgeText: 'text-amber-400',
+    badgeText: 'text-amber-700 dark:text-amber-400',
     label: 'Quiz Pendiente',
-    accent: 'text-amber-400',
+    accent: 'text-amber-700 dark:text-amber-400',
   },
   completada: {
     icon: CheckCircle2,
@@ -106,7 +106,7 @@ export function LessonCard({ titulo, orden, estado, intentos, nota, onClick }: L
             {titulo}
           </p>
           {estado === 'quiz_pendiente' && intentos > 0 && (
-            <p className="text-xs text-amber-400/80 mt-1 tabular-nums">
+            <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-1 tabular-nums">
               Intento {intentos}/3 {nota !== undefined && `· Mejor nota: ${nota}/10`}
             </p>
           )}

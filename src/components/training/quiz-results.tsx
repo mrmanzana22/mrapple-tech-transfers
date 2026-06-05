@@ -113,12 +113,12 @@ export function QuizResults({ result, onRetry, onNextLesson, onRewatchVideo, onB
       {/* Failed topics */}
       {!passed && result.temas_fallados.length > 0 && (
         <div data-result-section className="space-y-2.5">
-          <p className="text-sm font-semibold text-amber-400">Temas a repasar:</p>
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Temas a repasar:</p>
           <div className="flex flex-wrap gap-2">
             {result.temas_fallados.map(tema => (
               <span
                 key={tema}
-                className="px-3 py-1 rounded-full text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400"
+                className="px-3 py-1 rounded-full text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400"
               >
                 {tema.replace(/_/g, ' ')}
               </span>

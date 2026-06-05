@@ -107,7 +107,7 @@ export function HistorialTab() {
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           placeholder="Buscar por IMEI o modelo…"
-          className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-zinc-600 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
+          className="w-full bg-card/70 border border-border rounded-2xl py-2.5 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground shadow-e1 outline-none transition-[border-color,box-shadow] duration-base ease-out-quint hover:border-muted-foreground/40 focus:border-primary/70 focus:ring-2 focus:ring-ring/25"
         />
         {busqueda && (
           <button
@@ -167,7 +167,7 @@ export function HistorialTab() {
                     <div className="flex items-start gap-3">
                       <div
                         className={`mt-0.5 rounded-full p-2 ring-1 ${
-                          enviado ? "bg-amber-500/15 text-amber-400 ring-amber-500/25" : "bg-primary/15 text-primary ring-primary/25"
+                          enviado ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 ring-amber-500/25" : "bg-primary/15 text-primary ring-primary/25"
                         }`}
                       >
                         {enviado ? (
@@ -262,7 +262,7 @@ export function HistorialTab() {
             >
               <div
                 className={`rounded-full p-2 ${
-                  detalle.direccion === "enviado" ? "bg-amber-500/15 text-amber-400" : "bg-primary/15 text-primary"
+                  detalle.direccion === "enviado" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-primary/15 text-primary"
                 }`}
               >
                 {detalle.direccion === "enviado" ? (

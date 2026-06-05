@@ -80,7 +80,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
         fill="none"
         stroke="currentColor"
         strokeWidth={strokeWidth}
-        className="text-slate-700/50"
+        className="text-muted-foreground/50"
       />
       {/* Progress circle */}
       <circle
@@ -93,7 +93,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
         strokeDasharray={circumference}
         strokeDashoffset={strokeDashoffset}
         strokeLinecap="round"
-        className="text-green-400 transition-all duration-100 ease-out"
+        className="text-primary transition-all duration-100 ease-out"
       />
     </svg>
   );
@@ -134,7 +134,7 @@ const PullToRefreshIndicator = React.forwardRef<
               />
               <ArrowDown
                 className={cn(
-                  "absolute text-green-400",
+                  "absolute text-primary",
                   sizeConfig.icon,
                   "transition-transform duration-150 ease-out"
                 )}
@@ -155,7 +155,7 @@ const PullToRefreshIndicator = React.forwardRef<
               />
               <ArrowDown
                 className={cn(
-                  "absolute text-green-400",
+                  "absolute text-primary",
                   sizeConfig.icon,
                   "rotate-180"
                 )}
@@ -169,8 +169,8 @@ const PullToRefreshIndicator = React.forwardRef<
               {/* iOS-style spinning ring */}
               <div
                 className={cn(
-                  "rounded-full border-2 border-slate-700",
-                  "border-t-green-400",
+                  "rounded-full border-2 border-border",
+                  "border-t-primary",
                   "animate-spin",
                   sizeConfig.spinner
                 )}
@@ -188,7 +188,7 @@ const PullToRefreshIndicator = React.forwardRef<
                 "animate-scale-in"
               )}
             >
-              <Check className={cn("text-green-400", sizeConfig.icon)} />
+              <Check className={cn("text-primary", sizeConfig.icon)} />
             </div>
           );
 
@@ -278,7 +278,7 @@ const PullToRefreshContainer = React.forwardRef<
           className={cn(
             "absolute top-0 left-0 right-0",
             "flex items-center justify-center",
-            "bg-gradient-to-b from-slate-950/50 to-transparent",
+            "bg-gradient-to-b from-background/50 to-transparent",
             "transition-all duration-200 ease-out",
             "z-10"
           )}
@@ -334,7 +334,7 @@ const RefreshSpinner = React.forwardRef<HTMLDivElement, RefreshSpinnerProps>(
       >
         <RefreshCw
           className={cn(
-            "text-green-400",
+            "text-primary",
             sizeConfig.spinner,
             isSpinning && "animate-spin"
           )}
@@ -374,7 +374,7 @@ const IOSSpinner = React.forwardRef<HTMLDivElement, IOSSpinnerProps>(
         <div
           className={cn(
             "rounded-full",
-            "border-2 border-slate-700",
+            "border-2 border-border",
             "border-t-green-400",
             "animate-spin",
             sizeMap[size]

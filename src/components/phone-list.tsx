@@ -187,7 +187,7 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
               </span>
               <span className="text-sm text-muted-foreground">
                 {selectedIds.size >= MAX_BATCH_SIZE ? (
-                  <span className="text-amber-400">máximo</span>
+                  <span className="text-amber-700 dark:text-amber-400">máximo</span>
                 ) : (
                   <span className="hidden xs:inline">seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
                 )}

@@ -788,8 +788,8 @@ export default function JefePage() {
                                   rep.estado?.toLowerCase().includes("reparado")
                                     ? "bg-primary/10 text-primary"
                                     : rep.estado?.toLowerCase().includes("entregado")
-                                    ? "bg-sky-400/10 text-sky-400"
-                                    : "bg-amber-400/10 text-amber-400"
+                                    ? "bg-sky-400/10 text-sky-600 dark:text-sky-400"
+                                    : "bg-amber-400/10 text-amber-700 dark:text-amber-400"
                                 }`}
                               >
                                 {rep.estado || "Pendiente"}

@@ -76,7 +76,7 @@ export function SegmentedTabs({
             <span
               aria-hidden
               className={cn(
-                "absolute inset-0 z-0 rounded-xl bg-accent shadow-e2 ring-1 ring-inset ring-white/[0.08]",
+                "absolute inset-0 z-0 rounded-xl bg-accent shadow-e2 ring-1 ring-inset ring-black/[0.04] dark:ring-white/[0.08]",
                 "transition-opacity duration-base ease-out-quint motion-reduce:transition-none",
                 active ? "opacity-100" : "opacity-0"
               )}

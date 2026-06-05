@@ -156,7 +156,7 @@ export function QuizEngine({ questions, intentoActual, onSubmit, onBack, submitt
       <div className="sticky bottom-4 pt-4">
         {showConfirm ? (
           <div className="surface-raised border-amber-500/30 rounded-2xl p-4 space-y-3 animate-scale-in">
-            <p className="text-sm text-amber-400 font-medium">
+            <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
               ¿Estás seguro? No podrás cambiar tus respuestas.
             </p>
             <div className="flex gap-2">

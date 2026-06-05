@@ -5,50 +5,57 @@
 @layer base {
   :root {
     /* ============================================
-       COLOR — Apple-grade neutral (zinc canal), dark-first.
-       Surfaces step up in lightness for elevation (bg < card < raised).
-       Green is a PUNCTUAL accent, not a surface.
+       COLOR — LIGHT (default). Apple-grade clean neutral (zinc canal).
+       Tarjetas blancas flotando sobre un lienzo gris suave; el verde es un
+       acento PUNTUAL (más oscuro que en dark para contraste sobre blanco).
+       NO crema/arena: gris neutro real. La calidez no la pone el bg.
        ============================================ */
-    --background: 240 6% 6%;        /* app canvas — near zinc-950 */
-    --foreground: 0 0% 98%;
-    --card: 240 5% 9%;              /* default surface — sits above bg */
-    --card-foreground: 0 0% 98%;
-    --popover: 240 5% 11%;          /* floating surface — above card */
-    --popover-foreground: 0 0% 98%;
+    --background: 240 6% 96%;       /* lienzo — zinc-100 suave */
+    --foreground: 240 6% 10%;       /* casi negro, no negro puro */
+    --card: 0 0% 100%;              /* superficie blanca */
+    --card-foreground: 240 6% 10%;
+    --popover: 0 0% 100%;           /* superficie flotante blanca */
+    --popover-foreground: 240 6% 10%;
 
-    /* Accent (green) — used for CTAs, active/positive states ONLY */
-    --primary: 142 70% 45%;
-    --primary-foreground: 144 80% 6%;
+    /* Accent (verde) — CTAs y estados positivos. Oscurecido para que el texto
+       blanco encima cumpla contraste (≈ emerald-700). */
+    --primary: 142 64% 32%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 14%;        /* zinc-800-ish, quiet fills/chips */
-    --secondary-foreground: 0 0% 95%;
-    --muted: 240 4% 13%;
-    --muted-foreground: 240 5% 60%; /* zinc-400/500 — secondary text */
-    --accent: 240 4% 16%;           /* hover fill for ghost/neutral */
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;           /* hairline — zinc-800 */
-    --input: 240 4% 18%;
-    --ring: 142 70% 45%;            /* focus ring = accent */
-    --radius: 0.625rem;             /* 10px — softer, Apple-ish */
+    --secondary: 240 5% 94%;        /* relleno gris quieto / chips */
+    --secondary-foreground: 240 6% 12%;
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 4% 40%; /* zinc-500/600 — texto secundario, ≥4.5:1 */
+    --accent: 240 5% 92%;           /* hover fill para ghost/neutral */
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 88%;           /* hairline claro */
+    --input: 240 6% 85%;
+    --ring: 142 64% 36%;            /* focus ring = acento */
+    --radius: 0.625rem;             /* 10px */
+
+    /* ELEVATION — light: sombras suaves de alpha bajo (Apple). */
+    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.08);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.06), 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.12), 0 6px 12px -6px rgb(0 0 0 / 0.08);
+    --shadow-xl: 0 24px 56px -12px rgb(0 0 0 / 0.16), 0 10px 20px -10px rgb(0 0 0 / 0.1);
+    --shadow-accent: 0 6px 24px -6px hsl(142 64% 36% / 0.3);
+
+    /* Canales theme-aware (los consumen .glass/.sheen/scrollbar/shimmer/card-hover) */
+    --glass-bg: 0 0% 100% / 0.72;
+    --glass-border: 240 6% 86% / 0.8;
+    --sheen-color: 0 0% 100% / 0;       /* en claro la elevación es la sombra, no el brillo */
+    --scrollbar-thumb: 240 5% 78%;
+    --scrollbar-thumb-hover: 240 5% 66%;
+    --shimmer: 0 0% 0% / 0.05;          /* barrido oscuro sobre superficie clara */
+    --card-hover-border: 240 6% 82%;
+    --vignette: 0 0% 100% / 0.7;        /* glow blanco suave arriba (login/landing) */
 
     /* ============================================
-       ELEVATION — soft, layered shadows for depth.
-       Use via Tailwind `shadow-e1..e4` or `box-shadow: var(--shadow-md)`.
-       Dark-tuned: low alpha, generous blur, tight contact shadow.
-       ============================================ */
-    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.4);
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.45), 0 2px 6px -2px rgb(0 0 0 / 0.35);
-    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.5), 0 6px 12px -6px rgb(0 0 0 / 0.4);
-    --shadow-xl: 0 24px 56px -12px rgb(0 0 0 / 0.6), 0 10px 20px -10px rgb(0 0 0 / 0.45);
-    /* Accent glow — for primary CTAs / active highlights (use sparingly) */
-    --shadow-accent: 0 6px 24px -6px hsl(142 70% 45% / 0.4);
-
-    /* ============================================
-       MOTION — named easings + durations.
-       Mirror these in JS via EASE / DURATION in src/lib/gsap.ts.
+       MOTION — easings + duraciones (compartidos entre temas).
+       Espejados en JS vía EASE / DURATION en src/lib/gsap.ts.
        ============================================ */
     --duration-fast: 150ms;
     --duration-base: 300ms;
@@ -59,6 +66,51 @@
     --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* material standard */
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* playful overshoot */
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);      /* symmetric reversible */
+  }
+
+  .dark {
+    /* ============================================
+       COLOR — DARK. Paleta original Apple-grade dark-first (zinc canal).
+       Las superficies suben en luminosidad para elevación (bg < card < raised).
+       ============================================ */
+    --background: 240 6% 6%;        /* near zinc-950 */
+    --foreground: 0 0% 98%;
+    --card: 240 5% 9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 11%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 142 70% 45%;
+    --primary-foreground: 144 80% 6%;
+
+    --secondary: 240 4% 14%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 4% 13%;
+    --muted-foreground: 240 5% 60%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 18%;
+    --ring: 142 70% 45%;
+
+    /* ELEVATION — dark-tuned: low alpha, generous blur, tight contact shadow. */
+    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.45), 0 2px 6px -2px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.5), 0 6px 12px -6px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 24px 56px -12px rgb(0 0 0 / 0.6), 0 10px 20px -10px rgb(0 0 0 / 0.45);
+    --shadow-accent: 0 6px 24px -6px hsl(142 70% 45% / 0.4);
+
+    --glass-bg: 240 5% 9% / 0.6;
+    --glass-border: 240 4% 18% / 0.6;
+    --sheen-color: 0 0% 100% / 0.04;
+    --scrollbar-thumb: 240 4% 22%;
+    --scrollbar-thumb-hover: 240 4% 30%;
+    --shimmer: 0 0% 100% / 0.04;
+    --card-hover-border: 240 4% 22%;
+    --vignette: 240 5% 11% / 0.9;       /* top-light tenue sobre el lienzo oscuro */
   }
 }
 
@@ -101,7 +153,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Custom scrollbar — refined neutral */
+  /* Custom scrollbar — refined neutral, theme-aware */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -113,13 +165,13 @@
 
   ::-webkit-scrollbar-thumb {
     @apply rounded-full;
-    background-color: hsl(240 4% 22%);
+    background-color: hsl(var(--scrollbar-thumb));
     border: 2px solid transparent;
     background-clip: padding-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(240 4% 30%);
+    background-color: hsl(var(--scrollbar-thumb-hover));
   }
 }
 
@@ -133,12 +185,12 @@
     @apply bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent;
   }
 
-  /* Glass effect — refined: subtle top-light, saturated blur, hairline */
+  /* Glass effect — theme-aware: bg + hairline salen de variables por tema. */
   .glass {
-    background-color: hsl(240 5% 9% / 0.6);
+    background-color: hsl(var(--glass-bg));
     backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid hsl(240 4% 18% / 0.6);
+    border: 1px solid hsl(var(--glass-border));
   }
 
   /* ============================================
@@ -159,11 +211,12 @@
   .hairline-t { border-top: 1px solid hsl(var(--border)); }
   .hairline-b { border-bottom: 1px solid hsl(var(--border)); }
 
-  /* Subtle top sheen for premium surfaces (place as ::before-less overlay) */
+  /* Subtle top sheen para superficies premium. En dark da un top-light tenue;
+     en claro queda en cero (la elevación la lleva la sombra, no el brillo). */
   .sheen {
     background-image: linear-gradient(
       to bottom,
-      hsl(0 0% 100% / 0.04),
+      hsl(var(--sheen-color)),
       transparent 120px
     );
   }
@@ -223,7 +276,7 @@
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
-    border-color: hsl(240 4% 22%);
+    border-color: hsl(var(--card-hover-border));
   }
 
   /* Fade transition for conditional rendering */
@@ -378,7 +431,7 @@
   }
 
   /* ============================================
-     SKELETON SHIMMER - Premium loading effect
+     SKELETON SHIMMER - Premium loading effect (theme-aware)
      ============================================ */
   .skeleton-shimmer {
     position: relative;
@@ -392,7 +445,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.04) 50%,
+      hsl(var(--shimmer)) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
@@ -592,7 +645,7 @@
   @media (prefers-reduced-motion: reduce) {
     .skeleton-shimmer::after {
       animation: none;
-      background: rgba(255, 255, 255, 0.04);
+      background: hsl(var(--shimmer));
     }
 
     .animate-fade-in,
@@ -637,3 +690,30 @@
     }
   }
 }
+
+/* ============================================
+   VIEW TRANSITION — reveal circular al cambiar de tema.
+   El JS (theme-toggle.tsx) anima el clip-path de la capa nueva; aquí solo
+   apagamos el cross-fade por defecto y apilamos la nueva encima de la vieja,
+   para que el tema entrante se descubra como un círculo que crece.
+   ============================================ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2147483646;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+

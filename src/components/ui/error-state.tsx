@@ -65,21 +65,21 @@ const variantConfigs: Record<
     icon: AlertCircle,
     title: "Algo salio mal",
     message: "Ocurrio un error inesperado. Por favor intenta de nuevo.",
-    iconColor: "text-red-400",
+    iconColor: "text-red-600 dark:text-red-400",
     bgColor: "from-red-500/10 to-red-500/5",
   },
   network: {
     icon: WifiOff,
     title: "Sin conexion",
     message: "No pudimos conectar con el servidor. Verifica tu conexion a internet.",
-    iconColor: "text-amber-400",
+    iconColor: "text-amber-700 dark:text-amber-400",
     bgColor: "from-amber-500/10 to-amber-500/5",
   },
   server: {
     icon: ServerCrash,
     title: "Error del servidor",
     message: "El servidor no esta respondiendo. Intenta de nuevo en unos momentos.",
-    iconColor: "text-orange-400",
+    iconColor: "text-orange-700 dark:text-orange-400",
     bgColor: "from-orange-500/10 to-orange-500/5",
   },
   permission: {
@@ -153,7 +153,7 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
             icon: CustomIcon || AlertCircle,
             title: title || "Error",
             message: message || "",
-            iconColor: "text-red-400",
+            iconColor: "text-red-600 dark:text-red-400",
             bgColor: "from-red-500/10 to-red-500/5",
           }
         : variantConfigs[variant];
@@ -192,8 +192,8 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
           <div
             className={cn(
               "relative flex items-center justify-center rounded-2xl",
-              "bg-gradient-to-br from-slate-800/80 to-slate-900/80",
-              "border border-slate-700/50",
+              "bg-gradient-to-br from-muted/80 to-muted/80",
+              "border border-border/50",
               "backdrop-blur-sm",
               sizeConfig.iconWrapper
             )}
@@ -213,7 +213,7 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
         <div className="max-w-sm">
           <h3
             className={cn(
-              "font-semibold text-slate-200 mb-1.5",
+              "font-semibold text-foreground mb-1.5",
               sizeConfig.title
             )}
           >
@@ -222,7 +222,7 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
 
           <p
             className={cn(
-              "text-slate-500 leading-relaxed",
+              "text-muted-foreground leading-relaxed",
               sizeConfig.message
             )}
           >
@@ -237,7 +237,7 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
               type="button"
               onClick={() => setShowDetails(!showDetails)}
               className={cn(
-                "text-xs text-slate-600 hover:text-slate-500",
+                "text-xs text-muted-foreground hover:text-muted-foreground",
                 "transition-colors duration-200",
                 "flex items-center gap-1 mx-auto"
               )}
@@ -269,9 +269,9 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
             >
               <pre
                 className={cn(
-                  "text-xs text-slate-600 font-mono",
-                  "bg-slate-900/50 rounded-lg p-3",
-                  "border border-slate-800/50",
+                  "text-xs text-muted-foreground font-mono",
+                  "bg-muted/50 rounded-lg p-3",
+                  "border border-border/50",
                   "overflow-auto max-h-24",
                   "text-left"
                 )}
@@ -291,8 +291,8 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
                 disabled={isRetrying}
                 size={sizeConfig.buttonSize}
                 className={cn(
-                  "bg-slate-800 hover:bg-slate-700 text-slate-200",
-                  "border border-slate-700",
+                  "bg-muted hover:bg-muted text-foreground",
+                  "border border-border",
                   "pressable"
                 )}
               >
@@ -311,7 +311,7 @@ const ErrorState = React.forwardRef<HTMLDivElement, ErrorStateProps>(
                 onClick={secondaryAction.onClick}
                 variant="ghost"
                 size={sizeConfig.buttonSize}
-                className="text-slate-500 hover:text-slate-300 pressable"
+                className="text-muted-foreground hover:text-foreground/80 pressable"
               >
                 {secondaryAction.label}
               </Button>

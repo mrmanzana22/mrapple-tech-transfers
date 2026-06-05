@@ -124,7 +124,7 @@ export default function RepairApprovalPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background p-6">
       {/* Ambient depth — quiet neutral wash */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,hsl(240_5%_11%/0.9),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,hsl(var(--vignette)),transparent_60%)]" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">

@@ -30,7 +30,7 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
       <div
         ref={ref}
         className={cn(
-          "relative overflow-hidden bg-slate-800/60",
+          "relative overflow-hidden bg-muted/60",
           variantStyles[variant],
           shimmer && "skeleton-shimmer",
           className
@@ -82,9 +82,9 @@ const PhoneCardSkeleton = React.forwardRef<
 >(({ className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("w-full", className)} {...props}>
-      <Card className="relative overflow-hidden border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl shadow-black/20">
+      <Card className="relative overflow-hidden border-border/50 bg-gradient-to-br from-muted via-muted to-muted shadow-xl shadow-black/20">
         {/* Gradient accent line - estatico */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-border via-border to-border" />
 
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -197,7 +197,7 @@ const SkeletonInline = React.forwardRef<
     <span
       ref={ref}
       className={cn(
-        "inline-block h-4 w-20 align-middle rounded skeleton-shimmer bg-slate-800/60",
+        "inline-block h-4 w-20 align-middle rounded skeleton-shimmer bg-muted/60",
         className
       )}
       {...props}
@@ -246,7 +246,7 @@ const SkeletonCard = React.forwardRef<
     <Card
       ref={ref}
       className={cn(
-        "border-slate-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-6",
+        "border-border/50 bg-gradient-to-br from-muted via-muted to-muted p-6",
         className
       )}
       {...props}

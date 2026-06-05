@@ -119,8 +119,18 @@ export function DetailSheet({
             </DialogPrimitive.Close>
           </div>
 
-          {/* Scrollable body */}
-          <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 pb-2">
+          {/* Scrollable body. Sin footer, el cuerpo es lo último: se le da
+              respiro inferior + safe-area para que la última fila no quede
+              pegada a la barra del navegador / home indicator en móvil. */}
+          <div
+            ref={bodyRef}
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto px-6",
+              footer
+                ? "pb-2"
+                : "pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6"
+            )}
+          >
             {children}
           </div>
 

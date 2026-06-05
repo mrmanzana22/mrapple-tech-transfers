@@ -36,9 +36,9 @@ export function TransferProgress({ job }: TransferProgressProps) {
       <div className="flex items-center gap-3">
         <div className="shrink-0">
           {!finished ? (
-            <Loader2 className="h-5 w-5 animate-spin text-sky-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-sky-600 dark:text-sky-400" />
           ) : hasFail ? (
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <AlertTriangle className="h-5 w-5 text-amber-700 dark:text-amber-400" />
           ) : (
             <CheckCircle2 className="h-5 w-5 text-primary" />
           )}

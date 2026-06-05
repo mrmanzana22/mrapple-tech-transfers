@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { LogOut, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // ============================================
 // TYPES
@@ -51,7 +52,7 @@ export function Header({
         <div className="flex items-center gap-2 sm:gap-4">
           {/* User badge */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/60 border border-border">
-            <User className="w-4 h-4 text-green-400" />
+            <User className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground/80">
               {tecnicoNombre}
             </span>
@@ -65,9 +66,9 @@ export function Header({
           {/* Sync indicator + Refresh button */}
           <div className="flex items-center gap-2">
             {isSyncing && (
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs text-green-400 hidden sm:inline">Sincronizando</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 border border-primary/20">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs text-primary hidden sm:inline">Sincronizando</span>
               </div>
             )}
             <Button
@@ -75,7 +76,7 @@ export function Header({
               size="icon"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <RefreshCw
                 className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
@@ -84,12 +85,15 @@ export function Header({
             </Button>
           </div>
 
+          {/* Theme toggle */}
+          <ThemeToggle className="text-muted-foreground hover:text-foreground hover:bg-accent" />
+
           {/* Logout button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onLogout}
-            className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+            className="text-muted-foreground hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut className="w-5 h-5" />
             <span className="sr-only">Cerrar sesion</span>
