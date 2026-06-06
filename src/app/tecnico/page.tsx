@@ -190,6 +190,42 @@ export default function TecnicoPage() {
 
   const hayFiltrosActivos = !!estadoFiltro || !!gradoFiltro || !!debouncedSearch.trim();
 
+  // --- Clientes (reparaciones): búsqueda + filtro por estado + contador (M1) ---
+  const [clientesSearch, setClientesSearch] = useState("");
+  const debouncedClientesSearch = useDebounce(clientesSearch, 300);
+  const [clienteEstadoFiltro, setClienteEstadoFiltro] = useState<string | null>(null);
+
+  // Estados reales presentes en las reparaciones del técnico (texto libre de Monday).
+  const estadosClientesDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of reparaciones) if (r.estado?.trim()) set.add(r.estado.trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+  }, [reparaciones]);
+
+  // Filtrado combinado: búsqueda (cliente / teléfono / IMEI / modelo) + estado.
+  const filteredReparaciones = useMemo(() => {
+    const query = debouncedClientesSearch.toLowerCase().trim();
+    return reparaciones.filter((rep) => {
+      if (clienteEstadoFiltro && rep.estado !== clienteEstadoFiltro) return false;
+      if (query) {
+        const haystack = [
+          rep.cliente_nombre,
+          rep.cliente_apellido,
+          rep.cliente_telefono,
+          rep.imei,
+          rep.nombre,
+          rep.tipo_reparacion,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+  }, [reparaciones, debouncedClientesSearch, clienteEstadoFiltro]);
+
+  const hayFiltrosClientes = !!clienteEstadoFiltro || !!debouncedClientesSearch.trim();
+
   // Técnico seleccionado para el sheet de equipos + sus teléfonos filtrados.
   const equipoTecData = useMemo(
     () =>
@@ -937,6 +973,70 @@ export default function TecnicoPage() {
         ) : activeTab === "clientes" ? (
           /* Clientes tab content */
           <div className="space-y-4">
+            {/* Búsqueda + filtro por estado + contador (M1). Solo cuando hay
+                reparaciones cargadas, para no estorbar en vacío/carga. */}
+            {!reparacionesLoading && reparaciones.length > 0 && (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar cliente, teléfono o IMEI..."
+                    value={clientesSearch}
+                    onChange={(e) => setClientesSearch(e.target.value)}
+                    className="pl-11 pr-11 h-11 rounded-xl"
+                  />
+                  {clientesSearch && (
+                    <button
+                      onClick={() => setClientesSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-accent rounded-full transition-colors duration-fast ease-out-quint"
+                      aria-label="Limpiar búsqueda"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+
+                {estadosClientesDisponibles.length > 1 && (
+                  <div className="-mx-1 flex flex-wrap items-center gap-2 px-1">
+                    {estadosClientesDisponibles.map((est) => {
+                      const activo = clienteEstadoFiltro === est;
+                      return (
+                        <button
+                          key={`cli-est-${est}`}
+                          type="button"
+                          onClick={() => setClienteEstadoFiltro(activo ? null : est)}
+                          aria-pressed={activo}
+                          className={`pressable-sm rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-[background-color,color,box-shadow] duration-fast ease-out-quint ${
+                            activo
+                              ? "bg-primary text-primary-foreground ring-primary"
+                              : "bg-card/70 text-muted-foreground ring-border hover:text-foreground hover:ring-muted-foreground/40"
+                          }`}
+                        >
+                          {est}
+                        </button>
+                      );
+                    })}
+                    {clienteEstadoFiltro && (
+                      <button
+                        type="button"
+                        onClick={() => setClienteEstadoFiltro(null)}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" /> Limpiar
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {hayFiltrosClientes && (
+                  <p className="text-sm text-muted-foreground tabular-nums animate-fade-in">
+                    {filteredReparaciones.length} de {reparaciones.length} cliente{reparaciones.length !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </>
+            )}
+
             {reparacionesLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -958,8 +1058,19 @@ export default function TecnicoPage() {
                   No hay reparaciones de clientes asignadas
                 </p>
               </Reveal>
+            ) : filteredReparaciones.length === 0 ? (
+              <Reveal y={16} className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="p-5 rounded-2xl bg-secondary ring-1 ring-inset ring-border mb-5">
+                  <Search className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {debouncedClientesSearch.trim()
+                    ? `Sin resultados para “${debouncedClientesSearch.trim()}”`
+                    : "Ningún cliente con ese estado"}
+                </p>
+              </Reveal>
             ) : (
-              reparaciones.map((rep, i) => (
+              filteredReparaciones.map((rep, i) => (
                 <Reveal key={rep.id} y={20} delay={Math.min(i * 0.04, 0.32)} className="card-hover">
                 <Card className="sheen">
                   <CardContent className="p-5">
