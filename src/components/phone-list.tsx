@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { verticalFade } from "@/lib/auto-animate";
-import { Smartphone, SearchX, CheckSquare, ArrowRightLeft, X } from "lucide-react";
+import { Smartphone, CheckSquare, ArrowRightLeft, X } from "lucide-react";
 import { PhoneCard, PhoneCardSkeleton } from "@/components/phone-card";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion";
@@ -99,13 +99,13 @@ export function PhoneList({ phones, onTransfer, onBatchTransfer, isLoading = fal
     return (
       <Reveal y={16} className="flex flex-col items-center justify-center py-20 px-4 text-center">
         <div className="p-5 rounded-2xl bg-secondary ring-1 ring-inset ring-border mb-5">
-          <SearchX className="w-10 h-10 text-muted-foreground" />
+          <Smartphone className="w-10 h-10 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-1.5">
-          No hay telefonos asignados
+          No hay teléfonos asignados
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-          No tienes telefonos asignados en este momento. Los telefonos apareceran aqui cuando te sean asignados.
+          No tienes teléfonos asignados en este momento. Los teléfonos aparecerán aquí cuando te sean asignados.
         </p>
       </Reveal>
     );

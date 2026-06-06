@@ -13,6 +13,7 @@ import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
 import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico, generateRequestId } from "@/lib/api";
+import { triggerHaptic, HAPTIC_SUCCESS } from "@/lib/haptic";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -580,6 +581,7 @@ export default function TecnicoPage() {
     async (payload: TransferPayload) => {
       const nombre = selectedPhone?.nombre ?? `Equipo ${payload.item_id}`;
       handleModalClose();
+      triggerHaptic(HAPTIC_SUCCESS);
       enqueueTransfers([{ payload, nombre }]);
     },
     [selectedPhone, handleModalClose, enqueueTransfers]
@@ -589,6 +591,7 @@ export default function TecnicoPage() {
     async (payloads: TransferPayload[]) => {
       const nameMap = new Map(selectedPhones.map((p) => [p.id, p.nombre]));
       handleModalClose();
+      triggerHaptic(HAPTIC_SUCCESS);
       enqueueTransfers(
         payloads.map((payload) => ({
           payload,
@@ -608,6 +611,7 @@ export default function TecnicoPage() {
         tecnico?.nombre || ""
       );
       if (response.success) {
+        triggerHaptic(HAPTIC_SUCCESS);
         toast.success("Estado actualizado a Reparado oficina");
         // Remove from SWR + localStorage so page navigation shows correct data
         removeReparacionesFromCache([reparacion.id]);
@@ -632,6 +636,7 @@ export default function TecnicoPage() {
         tecnico?.nombre || ""
       );
       if (response.success) {
+        triggerHaptic(HAPTIC_SUCCESS);
         toast.success("Equipo marcado como no reparado");
         removeReparacionesFromCache([reparacion.id]);
         setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
@@ -794,9 +799,18 @@ export default function TecnicoPage() {
       if (!selectedReparacion) return;
       const reparacion = selectedReparacion;
       handleReparacionModalClose();
+      triggerHaptic(HAPTIC_SUCCESS);
       enqueueReparacionTransfers([{ payload, reparacion }]);
     },
     [selectedReparacion, handleReparacionModalClose, enqueueReparacionTransfers]
+  );
+
+  // Mini-resumen de carga (M2): conteos para badges en pestañas + cinta.
+  const totalPhones = useMemo(() => phones.length, [phones]);
+  // Reparaciones aún accionables (no "reparado oficina") = pendientes.
+  const pendingRepairs = useMemo(
+    () => reparaciones.filter((r) => !r.estado.toLowerCase().includes("reparado oficina")).length,
+    [reparaciones]
   );
 
   // Get estado badge color
@@ -858,8 +872,8 @@ export default function TecnicoPage() {
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as typeof activeTab)}
           options={[
-            { value: "telefonos", label: "Teléfonos" },
-            { value: "clientes", label: "Clientes" },
+            { value: "telefonos", label: totalPhones > 0 ? `Teléfonos ${totalPhones}` : "Teléfonos" },
+            { value: "clientes", label: pendingRepairs > 0 ? `Clientes ${pendingRepairs}` : "Clientes" },
             ...(tecnico?.puede_ver_equipo
               ? [{ value: "equipo", label: "Equipo" }]
               : []),
@@ -867,6 +881,31 @@ export default function TecnicoPage() {
           ]}
         />
       </div>
+
+      {/* Mini-resumen de carga (M2): cinta sutil debajo de las pestañas. */}
+      {!phonesLoading && !reparacionesLoading && (totalPhones > 0 || pendingRepairs > 0) && (
+        <div className="container mx-auto px-4 pt-4 pb-2">
+          <div className="flex items-center gap-4 rounded-2xl bg-accent/30 ring-1 ring-inset ring-accent/40 px-4 py-3 text-sm">
+            {totalPhones > 0 && (
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-primary" />
+                <span className="text-muted-foreground">Total:</span>
+                <span className="font-semibold text-foreground tabular-nums">{totalPhones}</span>
+              </div>
+            )}
+            {totalPhones > 0 && pendingRepairs > 0 && (
+              <span className="h-4 w-px bg-border" aria-hidden />
+            )}
+            {pendingRepairs > 0 && (
+              <div className="flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                <span className="text-muted-foreground">Pendientes:</span>
+                <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums">{pendingRepairs}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <main ref={contentRef} className="container mx-auto px-4 py-6">
         {activeTab === "telefonos" ? (
