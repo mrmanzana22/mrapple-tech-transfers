@@ -70,7 +70,7 @@ export async function fetchTecnicosActivos(): Promise<string[]> {
 /**
  * Generates a unique request ID for idempotency
  */
-function generateRequestId(): string {
+export function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
@@ -254,13 +254,16 @@ export async function transferirReparacion(payload: {
   nuevo_tecnico?: string;
   comentario?: string;
   foto?: File | null;
+  /** Si se pasa, se reutiliza como clave de idempotencia (para reintentos
+   *  seguros). Si no, se genera uno nuevo por llamada. */
+  request_id?: string;
 }): Promise<ApiResponse<{ item_id: string }>> {
   try {
     const formData = new FormData();
     formData.append("item_id", payload.item_id);
     formData.append("tecnico_actual", payload.tecnico_actual);
     formData.append("tecnico_actual_nombre", payload.tecnico_actual_nombre);
-    formData.append("request_id", generateRequestId()); // Idempotency key
+    formData.append("request_id", payload.request_id || generateRequestId()); // Idempotency key
 
     // Nombre del equipo: se guarda en el log para que el historial lo muestre
     // siempre, aunque el item ya no esté en el snapshot tras moverse.

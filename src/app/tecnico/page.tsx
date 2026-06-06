@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico } from "@/lib/api";
+import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico, generateRequestId } from "@/lib/api";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -582,25 +582,44 @@ export default function TecnicoPage() {
           const batch = reparacionQueueRef.current.splice(0, REPARACION_CONCURRENCY);
           await Promise.all(
             batch.map(async ({ payload, reparacion }) => {
+              // request_id estable entre reintentos → la red es idempotente
+              // (Monday y el log con ignore-duplicates no duplican).
+              const requestId = generateRequestId();
+              const MAX_ATTEMPTS = 3; // 1 intento + 2 reintentos
+              let ok = false;
+              let lastError = "Error al transferir";
               try {
-                const response = await transferirReparacion({
-                  item_id: payload.item_id,
-                  tecnico_actual: payload.tecnico_actual,
-                  tecnico_actual_nombre: payload.tecnico_actual_nombre,
-                  item_nombre: reparacion.nombre,
-                  nuevo_tecnico: payload.nuevo_tecnico,
-                  comentario: payload.comentario,
-                  foto: payload.foto,
-                });
-                if (!response.success) throw new Error(response.error || "Error al transferir");
-                reparacionStatsRef.current.ok++;
-              } catch (err) {
-                const reason = err instanceof Error ? err.message : "Error desconocido";
-                reparacionStatsRef.current.fail++;
-                if (!reparacionStatsRef.current.firstError) reparacionStatsRef.current.firstError = reason;
-                // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
-                restoreReparacionesToCache([reparacion]);
-                console.error("[reparacion-queue] failed", payload.item_id, reason);
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                  const response = await transferirReparacion({
+                    item_id: payload.item_id,
+                    tecnico_actual: payload.tecnico_actual,
+                    tecnico_actual_nombre: payload.tecnico_actual_nombre,
+                    item_nombre: reparacion.nombre,
+                    nuevo_tecnico: payload.nuevo_tecnico,
+                    comentario: payload.comentario,
+                    foto: payload.foto,
+                    request_id: requestId,
+                  });
+                  if (response.success) {
+                    ok = true;
+                    break;
+                  }
+                  lastError = response.error || lastError;
+                  // Backoff antes de reintentar (600ms, 1200ms). Evita declarar
+                  // fallo por una microcaída de red transitoria.
+                  if (attempt < MAX_ATTEMPTS) {
+                    await new Promise((r) => setTimeout(r, attempt * 600));
+                  }
+                }
+                if (ok) {
+                  reparacionStatsRef.current.ok++;
+                } else {
+                  reparacionStatsRef.current.fail++;
+                  if (!reparacionStatsRef.current.firstError) reparacionStatsRef.current.firstError = lastError;
+                  // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
+                  restoreReparacionesToCache([reparacion]);
+                  console.error("[reparacion-queue] failed", payload.item_id, lastError);
+                }
               } finally {
                 reparacionStatsRef.current.done++;
                 setTransferJob({
