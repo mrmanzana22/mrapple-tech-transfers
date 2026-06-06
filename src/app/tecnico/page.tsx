@@ -85,7 +85,7 @@ export default function TecnicoPage() {
     refresh: refreshReparaciones,
     forceRefresh: forceRefreshReparaciones,
     removeFromCache: removeReparacionesFromCache,
-    mutate: mutateReparaciones,
+    restoreToCache: restoreReparacionesToCache,
   } = useReparaciones({
     tecnicoNombre: tecnico?.nombre || "",
     autoFetch: !!tecnico && activeTab === "clientes",
@@ -107,6 +107,13 @@ export default function TecnicoPage() {
   // Modal state - reparaciones
   const [selectedReparacion, setSelectedReparacion] = useState<ReparacionCliente | null>(null);
   const [isReparacionModalOpen, setIsReparacionModalOpen] = useState(false);
+  // Cola de transferencias de reparaciones en background (mismo patrón que los
+  // teléfonos: cerrar modal al instante + mandar la red por detrás). Guardamos
+  // la reparación completa junto al payload para poder hacer rollback si falla.
+  const reparacionQueueRef = useRef<{ payload: TransferPayload; reparacion: ReparacionCliente }[]>([]);
+  const reparacionWorkingRef = useRef(false);
+  const reparacionStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "" });
+  const reparacionHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bottom-sheet de detalle de reparación (presentación; vista del equipo).
   const [repDetalle, setRepDetalle] = useState<ReparacionCliente | null>(null);
@@ -216,6 +223,25 @@ export default function TecnicoPage() {
 
     setupPush();
   }, [tecnico?.nombre]);
+
+  // Si hay transferencias en vuelo (teléfonos o reparaciones), avisar antes de
+  // cerrar/recargar la pestaña: un fetch en background se cancela al cerrar y la
+  // transferencia se perdería silenciosamente. Cubre ambas colas.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      const pending =
+        transferWorkingRef.current ||
+        transferQueueRef.current.length > 0 ||
+        reparacionWorkingRef.current ||
+        reparacionQueueRef.current.length > 0;
+      if (pending) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   // Reparaciones auto-fetch when tab is active (handled by useReparaciones hook)
 
@@ -541,37 +567,117 @@ export default function TecnicoPage() {
     setSelectedReparacion(null);
   }, []);
 
+  // Drena la cola de reparaciones en background, en paralelo (mismo tope de
+  // concurrencia que los teléfonos). Si una falla, hace rollback real: la
+  // reparación vuelve a la lista (restoreReparacionesToCache la saca del ghost
+  // filter y la re-mete). Al vaciar, reconcilia con Monday; las OK siguen
+  // ocultas por el ghost filter (120s), las fallidas ya reaparecieron.
+  const REPARACION_CONCURRENCY = 4;
+  const drainReparacionQueue = useCallback(async () => {
+    if (reparacionWorkingRef.current) return;
+    reparacionWorkingRef.current = true;
+    try {
+      while (true) {
+        while (reparacionQueueRef.current.length > 0) {
+          const batch = reparacionQueueRef.current.splice(0, REPARACION_CONCURRENCY);
+          await Promise.all(
+            batch.map(async ({ payload, reparacion }) => {
+              try {
+                const response = await transferirReparacion({
+                  item_id: payload.item_id,
+                  tecnico_actual: payload.tecnico_actual,
+                  tecnico_actual_nombre: payload.tecnico_actual_nombre,
+                  nuevo_tecnico: payload.nuevo_tecnico,
+                  comentario: payload.comentario,
+                  foto: payload.foto,
+                });
+                if (!response.success) throw new Error(response.error || "Error al transferir");
+                reparacionStatsRef.current.ok++;
+              } catch (err) {
+                const reason = err instanceof Error ? err.message : "Error desconocido";
+                reparacionStatsRef.current.fail++;
+                if (!reparacionStatsRef.current.firstError) reparacionStatsRef.current.firstError = reason;
+                // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
+                restoreReparacionesToCache([reparacion]);
+                console.error("[reparacion-queue] failed", payload.item_id, reason);
+              } finally {
+                reparacionStatsRef.current.done++;
+                setTransferJob({
+                  total: reparacionStatsRef.current.total,
+                  done: reparacionStatsRef.current.done,
+                  fail: reparacionStatsRef.current.fail,
+                });
+              }
+            })
+          );
+        }
+        // Cola vacía: reconciliar con Monday. Si llegó algo durante el fetch, seguimos.
+        await forceRefreshReparaciones().catch(() => {});
+        if (reparacionQueueRef.current.length > 0) continue;
+        break;
+      }
+
+      // Resumen del lote.
+      const { ok, fail, firstError } = reparacionStatsRef.current;
+      if (fail === 0) {
+        toast.success(
+          ok === 1 ? "Reparación transferida correctamente" : `${ok} reparaciones transferidas correctamente`
+        );
+      } else if (ok > 0) {
+        toast.warning(`${ok} exitosas, ${fail} fallidas`);
+      } else {
+        toast.error(firstError || "Error al transferir");
+      }
+
+      // Dejar el estado final visible un momento y ocultar el indicador.
+      if (reparacionHideTimerRef.current) clearTimeout(reparacionHideTimerRef.current);
+      reparacionHideTimerRef.current = setTimeout(() => {
+        setTransferJob(null);
+        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        reparacionHideTimerRef.current = null;
+      }, 2500);
+    } finally {
+      reparacionWorkingRef.current = false;
+    }
+  }, [forceRefreshReparaciones, restoreReparacionesToCache]);
+
+  // Encola un lote de reparaciones: las oculta al instante (ghost filter + cache)
+  // y arranca/continúa el worker en background.
+  const enqueueReparacionTransfers = useCallback(
+    (items: { payload: TransferPayload; reparacion: ReparacionCliente }[]) => {
+      if (items.length === 0) return;
+
+      if (!reparacionWorkingRef.current && reparacionQueueRef.current.length === 0) {
+        if (reparacionHideTimerRef.current) {
+          clearTimeout(reparacionHideTimerRef.current);
+          reparacionHideTimerRef.current = null;
+        }
+        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+      }
+
+      // Desaparecen YA de la lista, sin esperar la red.
+      removeReparacionesFromCache(items.map((i) => i.payload.item_id));
+
+      reparacionStatsRef.current.total += items.length;
+      reparacionQueueRef.current.push(...items);
+      setTransferJob({
+        total: reparacionStatsRef.current.total,
+        done: reparacionStatsRef.current.done,
+        fail: reparacionStatsRef.current.fail,
+      });
+      void drainReparacionQueue();
+    },
+    [removeReparacionesFromCache, drainReparacionQueue]
+  );
+
   const handleTransferReparacionConfirm = useCallback(
     async (payload: TransferPayload) => {
-      try {
-        // Remove from SWR + localStorage so page navigation shows correct data
-        removeReparacionesFromCache([payload.item_id]);
-
-        const response = await transferirReparacion({
-          item_id: payload.item_id,
-          tecnico_actual: payload.tecnico_actual,
-          tecnico_actual_nombre: payload.tecnico_actual_nombre,
-          nuevo_tecnico: payload.nuevo_tecnico,
-          comentario: payload.comentario,
-          foto: payload.foto,
-        });
-
-        if (response.success) {
-          toast.success("Reparación transferida correctamente");
-          handleReparacionModalClose();
-          // Soft revalidate in background, excluding transferred item
-          setTimeout(() => forceRefreshReparaciones([payload.item_id]).catch(() => {}), 2000);
-        } else {
-          // Rollback on error
-          mutateReparaciones();
-          throw new Error(response.error);
-        }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Error al transferir");
-        throw err;
-      }
+      if (!selectedReparacion) return;
+      const reparacion = selectedReparacion;
+      handleReparacionModalClose();
+      enqueueReparacionTransfers([{ payload, reparacion }]);
     },
-    [handleReparacionModalClose, removeReparacionesFromCache, forceRefreshReparaciones, mutateReparaciones]
+    [selectedReparacion, handleReparacionModalClose, enqueueReparacionTransfers]
   );
 
   // Get estado badge color

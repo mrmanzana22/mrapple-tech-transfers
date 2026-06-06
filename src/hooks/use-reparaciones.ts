@@ -66,6 +66,18 @@ function addRecentTransfer(tecnico: string, id: string): void {
   } catch {}
 }
 
+// Saca ids del ghost filter (rollback de un ocultamiento optimista que falló).
+// Sin esto, el item quedaría oculto hasta que expire el TTL de 120s aunque la
+// transferencia haya fallado y el equipo siga asignado al técnico actual.
+function removeRecentTransfers(tecnico: string, ids: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const idSet = new Set(ids.map(String));
+    const updated = getRecentTransfers(tecnico).filter((t) => !idSet.has(t.id));
+    localStorage.setItem(`${RECENT_TRANSFERS_KEY_PREFIX}${tecnico}`, JSON.stringify(updated));
+  } catch {}
+}
+
 function parseTecnicoFromUrl(url: string): string {
   const q = url.indexOf("?");
   const params = new URLSearchParams(q >= 0 ? url.slice(q + 1) : "");
@@ -169,6 +181,24 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     );
   }, [mutate, syncToLocalStorage, markDirty, tecnicoNombre]);
 
+  // Rollback de un ocultamiento optimista: re-mete las reparaciones al cache +
+  // localStorage y las saca del ghost filter, para usar cuando la transferencia
+  // en background falla y el equipo sigue asignado al técnico actual.
+  const restoreToCache = useCallback((items: ReparacionCliente[]) => {
+    if (items.length === 0) return;
+    removeRecentTransfers(tecnicoNombre, items.map((r) => String(r.id)));
+    mutate(
+      (current) => {
+        const existing = current ?? [];
+        const have = new Set(existing.map((r) => r.id));
+        const merged = [...existing, ...items.filter((r) => !have.has(r.id))];
+        syncToLocalStorage(merged);
+        return merged;
+      },
+      { revalidate: false }
+    );
+  }, [mutate, syncToLocalStorage, tecnicoNombre]);
+
   // Force refresh bypasses server cache (for use after mutations)
   // excludeIds: items recently mutated that Monday might not have propagated yet
   const forceRefresh = useCallback(async (excludeIds?: string[]) => {
@@ -204,6 +234,7 @@ export function useReparaciones({ tecnicoNombre, autoFetch = true }: UseReparaci
     refresh,
     forceRefresh,
     removeFromCache,
+    restoreToCache,
     mutate,
   };
 }
