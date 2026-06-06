@@ -91,8 +91,31 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = getSupabaseServer();
-    const myId = session.tecnico_id;
-    const myName = session.nombre;
+
+    // Por defecto el historial es el del técnico de la sesión.
+    let targetId = session.tecnico_id;
+    let targetName = session.nombre;
+
+    // Quien puede ver el equipo (o el jefe) puede ver el historial de OTRO
+    // técnico vía ?tecnico=NOMBRE. Si no tiene permiso, se ignora el parámetro
+    // silenciosamente y se devuelve el propio (sin error, sin filtrar nada ajeno).
+    const tecnicoParam = (req.nextUrl.searchParams.get("tecnico") || "").trim();
+    const puedeVerOtros = session.puede_ver_equipo || session.rol === "jefe";
+    if (tecnicoParam && puedeVerOtros && tecnicoParam.toLowerCase() !== session.nombre.toLowerCase()) {
+      // PostgREST no normaliza acentos; los nombres internos no llevan tildes.
+      const { data: tecRow } = await supabase
+        .from("mrapple_tecnicos")
+        .select("id, nombre")
+        .ilike("nombre", tecnicoParam)
+        .maybeSingle();
+      if (tecRow?.id) {
+        targetId = tecRow.id as string;
+        targetName = (tecRow.nombre as string) || tecnicoParam;
+      }
+    }
+
+    const myId = targetId;
+    const myName = targetName;
 
     // Si hay búsqueda, resolvemos qué item_ids coinciden por IMEI o nombre
     // en el snapshot (cubre TODO el historial, no solo lo cargado).

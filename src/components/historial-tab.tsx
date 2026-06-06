@@ -55,12 +55,23 @@ const FILTROS: { key: Filtro; label: string }[] = [
   { key: "recibidos", label: "Recibidos" },
 ];
 
-export function HistorialTab() {
+interface HistorialTabProps {
+  // Si el técnico logueado puede ver el equipo (o es jefe), puede ver también
+  // el historial de otros técnicos vía un selector arriba de la lista.
+  puedeVerOtros?: boolean;
+  miNombre?: string;
+}
+
+export function HistorialTab({ puedeVerOtros = false, miNombre }: HistorialTabProps) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   // Filtro por contenido (foto / comentario). Se aplica client-side sobre lo ya
   // cargado, así es instantáneo y se combina con enviados/recibidos.
   const [contenido, setContenido] = useState<Contenido>("todos");
   const [busqueda, setBusqueda] = useState("");
+  // Técnico cuyo historial se está viendo. null = el mío (sesión).
+  const [tecnicoSel, setTecnicoSel] = useState<string | null>(null);
+  // Lista de técnicos para el selector (solo si puedeVerOtros).
+  const [tecnicos, setTecnicos] = useState<string[]>([]);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +84,13 @@ export function HistorialTab() {
   // corrimiento horizontal al cargar/filtrar.
   const [listRef] = useAutoAnimate<HTMLDivElement>(verticalFade);
 
-  const cargar = useCallback(async (f: Filtro, q: string) => {
+  const cargar = useCallback(async (f: Filtro, q: string, tec: string | null) => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ filtro: f });
       if (q.trim()) params.set("q", q.trim());
+      if (tec) params.set("tecnico", tec);
       const res = await fetch(`/api/live/historial?${params.toString()}`, {
         credentials: "include",
         headers: { "X-Requested-With": "mrapple" },
@@ -105,9 +117,47 @@ export function HistorialTab() {
 
   useEffect(() => {
     // Debounce de la búsqueda para no pegarle al endpoint en cada tecla.
-    const t = setTimeout(() => cargar(filtro, busqueda), busqueda ? 350 : 0);
+    const t = setTimeout(() => cargar(filtro, busqueda, tecnicoSel), busqueda ? 350 : 0);
     return () => clearTimeout(t);
-  }, [filtro, busqueda, cargar]);
+  }, [filtro, busqueda, tecnicoSel, cargar]);
+
+  // Cargar la lista de técnicos para el selector (mismo gate de permiso que el
+  // endpoint de equipo). Solo se trae una vez si el usuario puede ver otros.
+  useEffect(() => {
+    if (!puedeVerOtros) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/live/equipo-resumen", {
+          credentials: "include",
+          headers: { "X-Requested-With": "mrapple" },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelado || !Array.isArray(data)) return;
+        const nombres = (data as { tecnico?: string }[])
+          .map((r) => (r.tecnico || "").trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, "es"));
+        setTecnicos(nombres);
+      } catch {
+        // Silencioso: si falla, simplemente no se muestra el selector de otros.
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [puedeVerOtros]);
+
+  // Técnicos del selector, excluyéndome a mí (el chip "Yo" me representa).
+  const otrosTecnicos = useMemo(
+    () =>
+      tecnicos.filter(
+        (t) => !miNombre || t.toLowerCase() !== miNombre.toLowerCase()
+      ),
+    [tecnicos, miNombre]
+  );
+  const mostrarSelector = puedeVerOtros && otrosTecnicos.length > 0;
 
   // Filtrado por contenido (client-side, instantáneo).
   const movimientosFiltrados = useMemo(() => {
@@ -118,6 +168,37 @@ export function HistorialTab() {
 
   return (
     <div className="space-y-4">
+      {/* Selector de técnico: solo para quien puede ver el equipo. "Yo" = sesión. */}
+      {mostrarSelector && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <button
+            type="button"
+            onClick={() => setTecnicoSel(null)}
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-fast ${
+              tecnicoSel === null
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+          >
+            Yo
+          </button>
+          {otrosTecnicos.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTecnicoSel(t)}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-fast ${
+                tecnicoSel === t
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Búsqueda por IMEI o modelo */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -179,9 +260,15 @@ export function HistorialTab() {
               : contenido === "comentario"
               ? "No hay movimientos con comentario"
               : filtro === "enviados"
-              ? "No has enviado equipos todavía"
+              ? tecnicoSel
+                ? `${tecnicoSel} no ha enviado equipos`
+                : "No has enviado equipos todavía"
               : filtro === "recibidos"
-              ? "No has recibido equipos todavía"
+              ? tecnicoSel
+                ? `${tecnicoSel} no ha recibido equipos`
+                : "No has recibido equipos todavía"
+              : tecnicoSel
+              ? `Sin movimientos de ${tecnicoSel}`
               : "Sin movimientos registrados"}
           </div>
         ) : (

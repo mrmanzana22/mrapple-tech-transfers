@@ -1174,7 +1174,10 @@ export default function TecnicoPage() {
             )}
           </div>
         ) : activeTab === "historial" ? (
-          <HistorialTab />
+          <HistorialTab
+            puedeVerOtros={!!tecnico?.puede_ver_equipo || tecnico?.rol === "jefe"}
+            miNombre={tecnico?.nombre}
+          />
         ) : null}
       </main>
 
