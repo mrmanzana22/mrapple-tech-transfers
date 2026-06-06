@@ -587,6 +587,7 @@ export default function TecnicoPage() {
                   item_id: payload.item_id,
                   tecnico_actual: payload.tecnico_actual,
                   tecnico_actual_nombre: payload.tecnico_actual_nombre,
+                  item_nombre: reparacion.nombre,
                   nuevo_tecnico: payload.nuevo_tecnico,
                   comentario: payload.comentario,
                   foto: payload.foto,
