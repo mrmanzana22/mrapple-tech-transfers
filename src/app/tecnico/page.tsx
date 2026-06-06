@@ -7,7 +7,7 @@ import { Header } from "@/components/header";
 import { PhoneList } from "@/components/phone-list";
 import { TransferModal } from "@/components/transfer-modal";
 import { HistorialTab } from "@/components/historial-tab";
-import { TransferProgress, type TransferJob } from "@/components/transfer-progress";
+import { TransferProgress, type TransferJob, type TransferFailure } from "@/components/transfer-progress";
 import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { PhoneCard } from "@/components/phone-card";
 import { DetailSheet } from "@/components/ui/detail-sheet";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import { gsap, useGSAP, EASE, DURATION, prefersReducedMotion } from "@/lib/gsap";
 import { ChevronDown, ChevronRight, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap, Smartphone, Phone as PhoneIcon, Wrench } from "lucide-react";
@@ -99,9 +100,11 @@ export default function TecnicoPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
   // Cola de transferencias en background (permite seguir mandando más).
-  const transferQueueRef = useRef<TransferPayload[]>([]);
+  // Guardamos el nombre del equipo junto al payload para poder reportar
+  // exactamente cuáles fallaron en el indicador de progreso.
+  const transferQueueRef = useRef<{ payload: TransferPayload; nombre: string }[]>([]);
   const transferWorkingRef = useRef(false);
-  const transferStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "" });
+  const transferStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] as TransferFailure[] });
   const transferHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -113,11 +116,17 @@ export default function TecnicoPage() {
   // la reparación completa junto al payload para poder hacer rollback si falla.
   const reparacionQueueRef = useRef<{ payload: TransferPayload; reparacion: ReparacionCliente }[]>([]);
   const reparacionWorkingRef = useRef(false);
-  const reparacionStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "" });
+  const reparacionStatsRef = useRef({ total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] as TransferFailure[] });
   const reparacionHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bottom-sheet de detalle de reparación (presentación; vista del equipo).
   const [repDetalle, setRepDetalle] = useState<ReparacionCliente | null>(null);
+
+  // Confirmación antes de cambiar el estado de una reparación (U2): evita que
+  // un toque accidental marque un equipo como reparado / no reparado.
+  const [confirmEstado, setConfirmEstado] = useState<
+    { tipo: "reparado" | "noreparado"; reparacion: ReparacionCliente } | null
+  >(null);
 
   // Transición de contenido al cambiar de pestaña (presentación). El contenido
   // entra con un fade-up cada vez que se cambia de tab, sin remontar los hijos
@@ -145,15 +154,41 @@ export default function TecnicoPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
+  // Filtros por estado y grado (U8). null = "todos".
+  const [estadoFiltro, setEstadoFiltro] = useState<string | null>(null);
+  const [gradoFiltro, setGradoFiltro] = useState<string | null>(null);
 
-  // Filtered phones by IMEI
+  // Opciones de filtro derivadas de los teléfonos reales (no mostramos filtros
+  // vacíos). Cada estado/grado con su etiqueta legible.
+  const ESTADO_LABELS: Record<string, string> = {
+    Done: "Completado",
+    Reparacion: "En reparación",
+    Pendiente: "Pendiente",
+    Stock: "Stock",
+  };
+  const estadosDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of phones) if (p.estado) set.add(p.estado);
+    return Array.from(set);
+  }, [phones]);
+  const gradosDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of phones) if (p.grado) set.add(p.grado);
+    return Array.from(set).sort();
+  }, [phones]);
+
+  // Filtrado combinado: IMEI (búsqueda) + estado + grado.
   const filteredPhones = useMemo(() => {
-    if (!debouncedSearch.trim()) return phones;
     const query = debouncedSearch.toLowerCase().trim();
-    return phones.filter((phone) =>
-      phone.imei?.toLowerCase().includes(query)
-    );
-  }, [phones, debouncedSearch]);
+    return phones.filter((phone) => {
+      if (query && !phone.imei?.toLowerCase().includes(query)) return false;
+      if (estadoFiltro && phone.estado !== estadoFiltro) return false;
+      if (gradoFiltro && phone.grado !== gradoFiltro) return false;
+      return true;
+    });
+  }, [phones, debouncedSearch, estadoFiltro, gradoFiltro]);
+
+  const hayFiltrosActivos = !!estadoFiltro || !!gradoFiltro || !!debouncedSearch.trim();
 
   // Técnico seleccionado para el sheet de equipos + sus teléfonos filtrados.
   const equipoTecData = useMemo(
@@ -416,7 +451,7 @@ export default function TecnicoPage() {
         while (transferQueueRef.current.length > 0) {
           const batch = transferQueueRef.current.splice(0, TRANSFER_CONCURRENCY);
           await Promise.all(
-            batch.map(async (payload) => {
+            batch.map(async ({ payload, nombre }) => {
               try {
                 await transfer(payload);
                 transferStatsRef.current.ok++;
@@ -424,6 +459,7 @@ export default function TecnicoPage() {
                 const reason = err instanceof Error ? err.message : "Error desconocido";
                 transferStatsRef.current.fail++;
                 if (!transferStatsRef.current.firstError) transferStatsRef.current.firstError = reason;
+                transferStatsRef.current.failures.push({ nombre, reason });
                 console.error("[transfer-queue] failed", payload.item_id, reason);
                 logError("transfer-telefono", err, {
                   item_id: String(payload.item_id),
@@ -435,6 +471,7 @@ export default function TecnicoPage() {
                   total: transferStatsRef.current.total,
                   done: transferStatsRef.current.done,
                   fail: transferStatsRef.current.fail,
+                  failures: [...transferStatsRef.current.failures],
                 });
               }
             })
@@ -459,12 +496,14 @@ export default function TecnicoPage() {
       }
 
       // Dejar el estado final visible un momento y ocultar el indicador.
+      // Si hubo fallidos, dejamos el indicador más tiempo para que el técnico
+      // alcance a abrir "Ver cuáles fallaron".
       if (transferHideTimerRef.current) clearTimeout(transferHideTimerRef.current);
       transferHideTimerRef.current = setTimeout(() => {
         setTransferJob(null);
-        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] };
         transferHideTimerRef.current = null;
-      }, 2500);
+      }, fail > 0 ? 9000 : 2500);
     } finally {
       transferWorkingRef.current = false;
     }
@@ -472,8 +511,8 @@ export default function TecnicoPage() {
 
   // Encola un lote: oculta los teléfonos al instante y arranca/continúa el worker.
   const enqueueTransfers = useCallback(
-    (payloads: TransferPayload[]) => {
-      if (payloads.length === 0) return;
+    (items: { payload: TransferPayload; nombre: string }[]) => {
+      if (items.length === 0) return;
 
       // Si el indicador estaba idle (en su ventana de auto-ocultado), arrancamos
       // un lote limpio; si hay uno corriendo, acumulamos sobre él.
@@ -482,18 +521,19 @@ export default function TecnicoPage() {
           clearTimeout(transferHideTimerRef.current);
           transferHideTimerRef.current = null;
         }
-        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        transferStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] };
       }
 
       // Desaparecen TODOS de una (optimista + ghost filter), sin esperar la red.
-      hidePhones(payloads.map((p) => p.item_id));
+      hidePhones(items.map((i) => i.payload.item_id));
 
-      transferStatsRef.current.total += payloads.length;
-      transferQueueRef.current.push(...payloads);
+      transferStatsRef.current.total += items.length;
+      transferQueueRef.current.push(...items);
       setTransferJob({
         total: transferStatsRef.current.total,
         done: transferStatsRef.current.done,
         fail: transferStatsRef.current.fail,
+        failures: [...transferStatsRef.current.failures],
       });
       void drainTransferQueue();
     },
@@ -502,18 +542,25 @@ export default function TecnicoPage() {
 
   const handleTransferConfirm = useCallback(
     async (payload: TransferPayload) => {
+      const nombre = selectedPhone?.nombre ?? `Equipo ${payload.item_id}`;
       handleModalClose();
-      enqueueTransfers([payload]);
+      enqueueTransfers([{ payload, nombre }]);
     },
-    [handleModalClose, enqueueTransfers]
+    [selectedPhone, handleModalClose, enqueueTransfers]
   );
 
   const handleBatchTransferConfirm = useCallback(
     async (payloads: TransferPayload[]) => {
+      const nameMap = new Map(selectedPhones.map((p) => [p.id, p.nombre]));
       handleModalClose();
-      enqueueTransfers(payloads);
+      enqueueTransfers(
+        payloads.map((payload) => ({
+          payload,
+          nombre: nameMap.get(payload.item_id) ?? `Equipo ${payload.item_id}`,
+        }))
+      );
     },
-    [handleModalClose, enqueueTransfers]
+    [selectedPhones, handleModalClose, enqueueTransfers]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {
@@ -622,6 +669,10 @@ export default function TecnicoPage() {
                 } else {
                   reparacionStatsRef.current.fail++;
                   if (!reparacionStatsRef.current.firstError) reparacionStatsRef.current.firstError = lastError;
+                  reparacionStatsRef.current.failures.push({
+                    nombre: `${reparacion.cliente_nombre} ${reparacion.cliente_apellido}`.trim() || reparacion.nombre,
+                    reason: lastError,
+                  });
                   // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
                   restoreReparacionesToCache([reparacion]);
                   console.error("[reparacion-queue] failed", payload.item_id, lastError);
@@ -636,6 +687,7 @@ export default function TecnicoPage() {
                   total: reparacionStatsRef.current.total,
                   done: reparacionStatsRef.current.done,
                   fail: reparacionStatsRef.current.fail,
+                  failures: [...reparacionStatsRef.current.failures],
                 });
               }
             })
@@ -663,9 +715,9 @@ export default function TecnicoPage() {
       if (reparacionHideTimerRef.current) clearTimeout(reparacionHideTimerRef.current);
       reparacionHideTimerRef.current = setTimeout(() => {
         setTransferJob(null);
-        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] };
         reparacionHideTimerRef.current = null;
-      }, 2500);
+      }, fail > 0 ? 9000 : 2500);
     } finally {
       reparacionWorkingRef.current = false;
     }
@@ -682,7 +734,7 @@ export default function TecnicoPage() {
           clearTimeout(reparacionHideTimerRef.current);
           reparacionHideTimerRef.current = null;
         }
-        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "" };
+        reparacionStatsRef.current = { total: 0, done: 0, ok: 0, fail: 0, firstError: "", failures: [] };
       }
 
       // Desaparecen YA de la lista, sin esperar la red.
@@ -694,6 +746,7 @@ export default function TecnicoPage() {
         total: reparacionStatsRef.current.total,
         done: reparacionStatsRef.current.done,
         fail: reparacionStatsRef.current.fail,
+        failures: [...reparacionStatsRef.current.failures],
       });
       void drainReparacionQueue();
     },
@@ -803,8 +856,72 @@ export default function TecnicoPage() {
               )}
             </div>
 
-            {/* Results counter when filtering */}
-            {debouncedSearch.trim() && (
+            {/* Filtros por estado / grado (U8). Solo se muestran si hay más de
+                una opción real, para no saturar cuando no aplican. */}
+            {!phonesLoading && (estadosDisponibles.length > 1 || gradosDisponibles.length > 1) && (
+              <div className="-mx-1 flex flex-wrap items-center gap-2 px-1">
+                {estadosDisponibles.length > 1 &&
+                  estadosDisponibles.map((est) => {
+                    const activo = estadoFiltro === est;
+                    return (
+                      <button
+                        key={`est-${est}`}
+                        type="button"
+                        onClick={() => setEstadoFiltro(activo ? null : est)}
+                        aria-pressed={activo}
+                        className={`pressable-sm rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-[background-color,color,box-shadow] duration-fast ease-out-quint ${
+                          activo
+                            ? "bg-primary text-primary-foreground ring-primary"
+                            : "bg-card/70 text-muted-foreground ring-border hover:text-foreground hover:ring-muted-foreground/40"
+                        }`}
+                      >
+                        {ESTADO_LABELS[est] ?? est}
+                      </button>
+                    );
+                  })}
+
+                {gradosDisponibles.length > 1 &&
+                  estadosDisponibles.length > 1 && (
+                    <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+                  )}
+
+                {gradosDisponibles.length > 1 &&
+                  gradosDisponibles.map((g) => {
+                    const activo = gradoFiltro === g;
+                    return (
+                      <button
+                        key={`grado-${g}`}
+                        type="button"
+                        onClick={() => setGradoFiltro(activo ? null : g)}
+                        aria-pressed={activo}
+                        className={`pressable-sm rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-[background-color,color,box-shadow] duration-fast ease-out-quint ${
+                          activo
+                            ? "bg-primary text-primary-foreground ring-primary"
+                            : "bg-card/70 text-muted-foreground ring-border hover:text-foreground hover:ring-muted-foreground/40"
+                        }`}
+                      >
+                        Grado {g}
+                      </button>
+                    );
+                  })}
+
+                {(estadoFiltro || gradoFiltro) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEstadoFiltro(null);
+                      setGradoFiltro(null);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" /> Limpiar
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Contador de resultados cuando hay cualquier filtro activo */}
+            {hayFiltrosActivos && (
               <p className="text-sm text-muted-foreground tabular-nums animate-fade-in">
                 {filteredPhones.length} de {phones.length} teléfono{phones.length !== 1 ? "s" : ""}
               </p>
@@ -882,7 +999,7 @@ export default function TecnicoPage() {
                       <div className="flex flex-col sm:flex-row gap-2">
                         {/* Primary action - full width on mobile */}
                         <Button
-                          onClick={() => handleReparadoOficina(rep)}
+                          onClick={() => setConfirmEstado({ tipo: "reparado", reparacion: rep })}
                           disabled={changingEstado === rep.id}
                           size="sm"
                           className="w-full sm:flex-1 order-1 sm:order-2"
@@ -903,7 +1020,7 @@ export default function TecnicoPage() {
                         {/* Secondary actions - side by side on mobile */}
                         <div className="flex gap-2 order-2 sm:order-1 sm:contents">
                           <Button
-                            onClick={() => handleNoReparado(rep)}
+                            onClick={() => setConfirmEstado({ tipo: "noreparado", reparacion: rep })}
                             disabled={changingEstado === rep.id}
                             variant="outline"
                             size="sm"
@@ -1101,14 +1218,23 @@ export default function TecnicoPage() {
             </div>
           </div>
 
-          {/* Lista de equipos */}
-          {equipoDetalle && loadingTeamPhones.has(equipoDetalle) ? (
+          {/* Lista de equipos.
+              Mostramos skeleton mientras carga O cuando aún no llegaron los
+              teléfonos pero el conteo dice que debería haberlos (evita el flash
+              de "Sin teléfonos asignados" antes de que termine el fetch). */}
+          {(() => {
+            const cargados = equipoTecData?.phones.length ?? 0;
+            const esperados = equipoTecData?.phonesCount ?? cargados;
+            const cargando =
+              (!!equipoDetalle && loadingTeamPhones.has(equipoDetalle)) ||
+              (cargados === 0 && esperados > 0);
+            return cargando ? (
             <div className="grid gap-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-24 w-full bg-secondary" />
               ))}
             </div>
-          ) : (equipoTecData?.phones.length ?? 0) === 0 ? (
+          ) : cargados === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               Sin teléfonos asignados
             </p>
@@ -1122,7 +1248,8 @@ export default function TecnicoPage() {
                 <PhoneCard key={phone.id} phone={phone} showTransferButton={false} />
               ))}
             </div>
-          )}
+          );
+          })()}
         </div>
       </DetailSheet>
 
@@ -1286,6 +1413,33 @@ export default function TecnicoPage() {
           currentTecnico={tecnico?.nombre || ""}
         />
       )}
+
+      {/* Confirmación de cambio de estado de reparación (U2) */}
+      <ConfirmDialog
+        open={!!confirmEstado}
+        onOpenChange={(o) => !o && setConfirmEstado(null)}
+        title={
+          confirmEstado?.tipo === "reparado"
+            ? "¿Marcar como Reparado Oficina?"
+            : "¿Marcar como No Reparado?"
+        }
+        description={
+          confirmEstado
+            ? `${confirmEstado.reparacion.cliente_nombre} ${confirmEstado.reparacion.cliente_apellido} · ${confirmEstado.reparacion.nombre}. Se actualizará el estado en Monday.`
+            : undefined
+        }
+        confirmLabel={
+          confirmEstado?.tipo === "reparado" ? "Sí, reparado" : "Sí, no reparado"
+        }
+        variant={confirmEstado?.tipo === "noreparado" ? "destructive" : "default"}
+        onConfirm={() => {
+          const c = confirmEstado;
+          setConfirmEstado(null);
+          if (!c) return;
+          if (c.tipo === "reparado") handleReparadoOficina(c.reparacion);
+          else handleNoReparado(c.reparacion);
+        }}
+      />
     </div>
   );
 }

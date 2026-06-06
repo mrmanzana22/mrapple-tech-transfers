@@ -1,11 +1,20 @@
 "use client";
 
-import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Loader2, CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react";
+
+export interface TransferFailure {
+  nombre: string;
+  reason: string;
+}
 
 export interface TransferJob {
   total: number;
   done: number;
   fail: number;
+  // Equipos que fallaron (con su motivo), para que el técnico sepa cuáles
+  // reintentar en vez de tener que revisar la lista a mano.
+  failures?: TransferFailure[];
 }
 
 interface TransferProgressProps {
@@ -16,10 +25,12 @@ interface TransferProgressProps {
 // Se muestra abajo-derecha mientras corren las transferencias en background,
 // dejando al técnico seguir navegando.
 export function TransferProgress({ job }: TransferProgressProps) {
-  const { total, done, fail } = job;
+  const { total, done, fail, failures } = job;
   const finished = done >= total;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const hasFail = fail > 0;
+  const [showFails, setShowFails] = useState(false);
+  const failList = failures ?? [];
 
   const titulo = finished
     ? hasFail
@@ -55,6 +66,38 @@ export function TransferProgress({ job }: TransferProgressProps) {
           </div>
         </div>
       </div>
+
+      {/* Detalle de fallidos: qué equipos no se pudieron transferir. */}
+      {finished && failList.length > 0 && (
+        <div className="mt-3 border-t border-border pt-2.5">
+          <button
+            type="button"
+            onClick={() => setShowFails((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-xs font-medium text-amber-700 transition-colors duration-fast hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+            aria-expanded={showFails}
+          >
+            <span>Ver cuáles fallaron ({failList.length})</span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform duration-base ease-out-quint ${
+                showFails ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {showFails && (
+            <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto overscroll-contain">
+              {failList.map((f, i) => (
+                <li
+                  key={`${f.nombre}-${i}`}
+                  className="rounded-lg bg-amber-500/[0.08] px-2.5 py-1.5 ring-1 ring-inset ring-amber-500/20"
+                >
+                  <p className="truncate text-xs font-medium text-foreground">{f.nombre}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{f.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

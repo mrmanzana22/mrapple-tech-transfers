@@ -63,6 +63,9 @@ export function TransferModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Paso de revisión antes de enviar un LOTE (U2): un toque accidental no debe
+  // transferir 10 equipos. Solo aplica a transferencias en lote.
+  const [confirming, setConfirming] = useState(false);
 
   // Dynamic technicians from Supabase
   const [tecnicos, setTecnicos] = useState<string[]>([]);
@@ -158,6 +161,7 @@ export function TransferModal({
     setPhoto(null);
     setPhotoPreview(null);
     setError(null);
+    setConfirming(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -169,6 +173,12 @@ export function TransferModal({
 
   const handleSubmit = useCallback(async () => {
     if (phones.length === 0) return;
+
+    // Lote: primer toque = pedir confirmación, no enviar todavía.
+    if (isBatch && !confirming) {
+      setConfirming(true);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -208,7 +218,7 @@ export function TransferModal({
     } finally {
       setIsLoading(false);
     }
-  }, [targetTechnician, comment, photo, phones, isBatch, currentTecnico, onConfirm, onBatchConfirm, resetForm, onClose]);
+  }, [targetTechnician, comment, photo, phones, isBatch, confirming, currentTecnico, onConfirm, onBatchConfirm, resetForm, onClose]);
 
   if (phones.length === 0) return null;
 
@@ -233,6 +243,24 @@ export function TransferModal({
             El cuerpo es la fila flexible del grid: scrollea internamente solo si
             hiciera falta; header y footer quedan siempre fijos a la vista. */}
         <div className="min-h-0 overflow-y-auto p-6 sm:overflow-hidden">
+          {/* Banner de revisión del lote (U2) */}
+          {isBatch && confirming && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl bg-primary/[0.06] p-4 ring-1 ring-inset ring-primary/25 animate-fade-in">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-inset ring-primary/25">
+                <ArrowRight className="h-4 w-4 text-primary" />
+              </span>
+              <div className="min-w-0 text-sm">
+                <p className="font-semibold text-foreground">
+                  {targetTechnician
+                    ? `Vas a transferir ${phones.length} teléfonos a ${targetTechnician}`
+                    : `Vas a adjuntar evidencia a ${phones.length} teléfonos`}
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  Revisa la lista antes de confirmar. Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="space-y-6 sm:grid sm:grid-cols-2 sm:gap-6 sm:space-y-0 sm:h-full sm:min-h-0">
             {/* Columna IZQUIERDA: equipos a transferir + técnico actual */}
             <div className="space-y-4 sm:flex sm:flex-col sm:min-h-0">
@@ -479,11 +507,11 @@ export function TransferModal({
           <Button
             type="button"
             variant="outline"
-            onClick={handleClose}
+            onClick={confirming ? () => setConfirming(false) : handleClose}
             disabled={isLoading}
             className="flex-1 sm:flex-none"
           >
-            Cancelar
+            {confirming ? "Volver" : "Cancelar"}
           </Button>
           <Button
             type="button"
@@ -495,6 +523,16 @@ export function TransferModal({
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Enviando...
+              </>
+            ) : isBatch && confirming ? (
+              <>
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Sí, transferir {phones.length}
+              </>
+            ) : isBatch ? (
+              <>
+                Revisar
+                <ArrowRight className="w-4 h-4 ml-2" />
               </>
             ) : (
               <>
