@@ -251,6 +251,7 @@ export async function transferirReparacion(payload: {
   tecnico_actual: string;
   tecnico_actual_nombre: string;
   item_nombre?: string;
+  imei?: string;
   nuevo_tecnico?: string;
   comentario?: string;
   foto?: File | null;
@@ -265,10 +266,13 @@ export async function transferirReparacion(payload: {
     formData.append("tecnico_actual_nombre", payload.tecnico_actual_nombre);
     formData.append("request_id", payload.request_id || generateRequestId()); // Idempotency key
 
-    // Nombre del equipo: se guarda en el log para que el historial lo muestre
-    // siempre, aunque el item ya no esté en el snapshot tras moverse.
+    // Nombre + IMEI del equipo: se guardan en el log para que el historial los
+    // muestre siempre, aunque el item ya no esté en el snapshot tras moverse.
     if (payload.item_nombre) {
       formData.append("item_nombre", payload.item_nombre);
+    }
+    if (payload.imei) {
+      formData.append("imei", payload.imei);
     }
 
     if (payload.nuevo_tecnico) {

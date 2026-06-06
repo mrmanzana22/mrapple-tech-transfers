@@ -26,6 +26,7 @@ import { gsap, useGSAP, EASE, DURATION, prefersReducedMotion } from "@/lib/gsap"
 import { ChevronDown, ChevronRight, UserCircle, XCircle, Search, X, ArrowRightLeft, GraduationCap, Smartphone, Phone as PhoneIcon, Wrench } from "lucide-react";
 import { canAccessTraining } from "@/lib/training";
 import { Reveal } from "@/components/motion";
+import { logError } from "@/lib/log-error";
 
 // Hook para debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -424,6 +425,10 @@ export default function TecnicoPage() {
                 transferStatsRef.current.fail++;
                 if (!transferStatsRef.current.firstError) transferStatsRef.current.firstError = reason;
                 console.error("[transfer-queue] failed", payload.item_id, reason);
+                logError("transfer-telefono", err, {
+                  item_id: String(payload.item_id),
+                  tecnico: tecnico?.nombre,
+                });
               } finally {
                 transferStatsRef.current.done++;
                 setTransferJob({
@@ -463,7 +468,7 @@ export default function TecnicoPage() {
     } finally {
       transferWorkingRef.current = false;
     }
-  }, [transfer, fetchPhones]);
+  }, [transfer, fetchPhones, tecnico?.nombre]);
 
   // Encola un lote: oculta los teléfonos al instante y arranca/continúa el worker.
   const enqueueTransfers = useCallback(
@@ -595,6 +600,7 @@ export default function TecnicoPage() {
                     tecnico_actual: payload.tecnico_actual,
                     tecnico_actual_nombre: payload.tecnico_actual_nombre,
                     item_nombre: reparacion.nombre,
+                    imei: reparacion.imei,
                     nuevo_tecnico: payload.nuevo_tecnico,
                     comentario: payload.comentario,
                     foto: payload.foto,
@@ -619,6 +625,10 @@ export default function TecnicoPage() {
                   // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
                   restoreReparacionesToCache([reparacion]);
                   console.error("[reparacion-queue] failed", payload.item_id, lastError);
+                  logError("transfer-reparacion", new Error(lastError), {
+                    item_id: String(payload.item_id),
+                    tecnico: tecnico?.nombre,
+                  });
                 }
               } finally {
                 reparacionStatsRef.current.done++;
@@ -659,7 +669,7 @@ export default function TecnicoPage() {
     } finally {
       reparacionWorkingRef.current = false;
     }
-  }, [forceRefreshReparaciones, restoreReparacionesToCache]);
+  }, [forceRefreshReparaciones, restoreReparacionesToCache, tecnico?.nombre]);
 
   // Encola un lote de reparaciones: las oculta al instante (ghost filter + cache)
   // y arranca/continúa el worker en background.

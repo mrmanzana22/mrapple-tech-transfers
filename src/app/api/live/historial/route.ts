@@ -23,6 +23,8 @@ type LogRow = {
   id: string;
   item_id: string;
   item_nombre: string | null;
+  tipo: string | null;
+  imei: string | null;
   tecnico_origen: string | null;
   tecnico_destino: string | null;
   comentario: string | null;
@@ -117,7 +119,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("mrapple_transfer_logs")
       .select(
-        "id, item_id, item_nombre, tecnico_origen, tecnico_destino, comentario, tiene_foto, foto_url, created_at"
+        "id, item_id, item_nombre, tipo, imei, tecnico_origen, tecnico_destino, comentario, tiene_foto, foto_url, created_at"
       )
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -188,19 +190,22 @@ export async function GET(req: NextRequest) {
     const movimientos: MovimientoHistorial[] = rows.map((r) => {
       const phone = phoneItems.get(r.item_id);
       const repair = repairItems.get(r.item_id);
-      let tipo: MovimientoHistorial["tipo"] = "desconocido";
+      // Fallbacks del log (se guardan al transferir): blindan el historial
+      // cuando el item ya no está en el snapshot tras moverse.
+      let tipo: MovimientoHistorial["tipo"] =
+        r.tipo === "telefono" || r.tipo === "reparacion" ? r.tipo : "desconocido";
       let equipo = r.item_nombre || "";
-      let imei: string | null = null;
+      let imei: string | null = r.imei || null;
       let specs: string | null = null;
       if (phone) {
         tipo = "telefono";
         equipo = String(phone.nombre || r.item_nombre || `Equipo ${r.item_id}`);
-        imei = phone.imei ? String(phone.imei) : null;
+        imei = phone.imei ? String(phone.imei) : imei;
         specs = buildSpecs("telefono", phone);
       } else if (repair) {
         tipo = "reparacion";
         equipo = String(repair.nombre || r.item_nombre || `Reparación ${r.item_id}`);
-        imei = repair.imei ? String(repair.imei) : null;
+        imei = repair.imei ? String(repair.imei) : imei;
         specs = buildSpecs("reparacion", repair);
       } else if (!equipo) {
         equipo = `Item ${r.item_id}`;
