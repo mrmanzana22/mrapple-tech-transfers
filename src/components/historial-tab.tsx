@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { verticalFade } from "@/lib/auto-animate";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,13 @@ import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import { ArrowUpRight, ArrowDownLeft, Camera, Smartphone, Wrench, Search, X, ChevronRight } from "lucide-react";
 
 type Filtro = "todos" | "enviados" | "recibidos";
+type Contenido = "todos" | "foto" | "comentario";
+
+const CONTENIDOS: { key: Contenido; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "foto", label: "Con foto" },
+  { key: "comentario", label: "Con comentario" },
+];
 
 interface Movimiento {
   id: string;
@@ -49,6 +56,9 @@ const FILTROS: { key: Filtro; label: string }[] = [
 
 export function HistorialTab() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Filtro por contenido (foto / comentario). Se aplica client-side sobre lo ya
+  // cargado, así es instantáneo y se combina con enviados/recibidos.
+  const [contenido, setContenido] = useState<Contenido>("todos");
   const [busqueda, setBusqueda] = useState("");
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +106,13 @@ export function HistorialTab() {
     return () => clearTimeout(t);
   }, [filtro, busqueda, cargar]);
 
+  // Filtrado por contenido (client-side, instantáneo).
+  const movimientosFiltrados = useMemo(() => {
+    if (contenido === "foto") return movimientos.filter((m) => m.tiene_foto);
+    if (contenido === "comentario") return movimientos.filter((m) => !!m.comentario?.trim());
+    return movimientos;
+  }, [movimientos, contenido]);
+
   return (
     <div className="space-y-4">
       {/* Búsqueda por IMEI o modelo */}
@@ -120,12 +137,20 @@ export function HistorialTab() {
         )}
       </div>
 
-      {/* Filtros */}
+      {/* Filtros por dirección */}
       <SegmentedTabs
         size="sm"
         value={filtro}
         onValueChange={(v) => setFiltro(v as Filtro)}
         options={FILTROS.map((f) => ({ value: f.key, label: f.label }))}
+      />
+
+      {/* Filtros por contenido (foto / comentario) */}
+      <SegmentedTabs
+        size="sm"
+        value={contenido}
+        onValueChange={(v) => setContenido(v as Contenido)}
+        options={CONTENIDOS.map((c) => ({ value: c.key, label: c.label }))}
       />
 
       <div ref={listRef} className="space-y-3">
@@ -142,10 +167,14 @@ export function HistorialTab() {
           </div>
         ) : error ? (
           <div className="text-center py-12 text-muted-foreground">{error}</div>
-        ) : movimientos.length === 0 ? (
+        ) : movimientosFiltrados.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {busqueda.trim()
               ? `Sin resultados para “${busqueda.trim()}”`
+              : contenido === "foto"
+              ? "No hay movimientos con foto"
+              : contenido === "comentario"
+              ? "No hay movimientos con comentario"
               : filtro === "enviados"
               ? "No has enviado equipos todavía"
               : filtro === "recibidos"
@@ -153,7 +182,7 @@ export function HistorialTab() {
               : "Sin movimientos registrados"}
           </div>
         ) : (
-          movimientos.map((m) => {
+          movimientosFiltrados.map((m) => {
             const enviado = m.direccion === "enviado";
             return (
               <button
