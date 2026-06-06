@@ -6,6 +6,7 @@ import { verticalFade } from "@/lib/auto-animate";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DetailSheet } from "@/components/ui/detail-sheet";
+import { Lightbox } from "@/components/ui/lightbox";
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import { ArrowUpRight, ArrowDownLeft, Camera, Smartphone, Wrench, Search, X, ChevronRight } from "lucide-react";
 
@@ -65,6 +66,8 @@ export function HistorialTab() {
   const [error, setError] = useState<string | null>(null);
   // Movimiento seleccionado para el bottom-sheet de detalle (presentación).
   const [detalle, setDetalle] = useState<Movimiento | null>(null);
+  // Foto abierta en el visor a pantalla completa (lightbox nativo).
+  const [fotoZoom, setFotoZoom] = useState<{ src: string; alt: string } | null>(null);
   // Anima entradas/salidas/reordenamientos de la lista al filtrar o buscar.
   // verticalFade: solo translateY + opacity, SIN scale, para que no haya
   // corrimiento horizontal al cargar/filtrar.
@@ -264,21 +267,26 @@ export function HistorialTab() {
       >
         {detalle && (
           <div className="space-y-4 pb-2">
-            {/* Foto grande */}
+            {/* Foto grande — abre el visor nativo a pantalla completa. */}
             {detalle.tiene_foto && detalle.foto_url && (
-              <a
-                href={detalle.foto_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pressable group block overflow-hidden rounded-2xl ring-1 ring-inset ring-border"
+              <button
+                type="button"
+                onClick={() =>
+                  setFotoZoom({
+                    src: detalle.foto_url!,
+                    alt: `Evidencia de ${detalle.equipo}`,
+                  })
+                }
+                aria-label="Ver foto en pantalla completa"
+                className="pressable group block w-full overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-inset ring-border"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={detalle.foto_url}
                   alt={`Evidencia de ${detalle.equipo}`}
-                  className="aspect-[4/3] w-full object-cover transition-transform duration-slow ease-out-quint group-hover:scale-[1.02]"
+                  className="aspect-[4/3] w-full object-contain transition-transform duration-slow ease-out-quint group-hover:scale-[1.02]"
                 />
-              </a>
+              </button>
             )}
 
             {/* Dirección */}
@@ -343,6 +351,14 @@ export function HistorialTab() {
           </div>
         )}
       </DetailSheet>
+
+      {/* Visor de foto a pantalla completa (nativo, sin salir de la app). */}
+      <Lightbox
+        open={!!fotoZoom}
+        onOpenChange={(o) => !o && setFotoZoom(null)}
+        src={fotoZoom?.src ?? null}
+        alt={fotoZoom?.alt}
+      />
     </div>
   );
 }
