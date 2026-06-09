@@ -882,31 +882,6 @@ export default function TecnicoPage() {
         />
       </div>
 
-      {/* Mini-resumen de carga (M2): cinta sutil debajo de las pestañas. */}
-      {!phonesLoading && !reparacionesLoading && (totalPhones > 0 || pendingRepairs > 0) && (
-        <div className="container mx-auto px-4 pt-4 pb-2">
-          <div className="flex items-center gap-4 rounded-2xl bg-accent/30 ring-1 ring-inset ring-accent/40 px-4 py-3 text-sm">
-            {totalPhones > 0 && (
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-primary" />
-                <span className="text-muted-foreground">Total:</span>
-                <span className="font-semibold text-foreground tabular-nums">{totalPhones}</span>
-              </div>
-            )}
-            {totalPhones > 0 && pendingRepairs > 0 && (
-              <span className="h-4 w-px bg-border" aria-hidden />
-            )}
-            {pendingRepairs > 0 && (
-              <div className="flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-amber-600 dark:text-amber-500" />
-                <span className="text-muted-foreground">Pendientes:</span>
-                <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums">{pendingRepairs}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <main ref={contentRef} className="container mx-auto px-4 py-6">
         {activeTab === "telefonos" ? (
           <div className="space-y-4">
