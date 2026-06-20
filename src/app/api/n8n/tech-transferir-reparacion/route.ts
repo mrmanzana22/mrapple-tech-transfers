@@ -13,6 +13,18 @@ import {
 } from "@/lib/idempotency";
 import { cache } from "@/lib/cache";
 import { deleteLiveRepair } from "@/lib/live-snapshot";
+import { getSupabaseServer } from "@/lib/supabase-server";
+
+// Normaliza un nombre de dueño para comparar de forma robusta: sin acentos,
+// sin espacios sobrantes, en mayúsculas. Evita falsos NOT_OWNER por
+// "Sebastián" vs "SEBASTIAN" o por espacios extra en snapshot/Monday.
+function normalizeOwner(value: string | null | undefined): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -43,10 +55,11 @@ export async function POST(req: NextRequest) {
     return addCorsHeaders(res, req);
   }
 
+  let requestId = "";
   try {
     const form = await req.formData();
     const itemId = String(form.get("item_id") ?? "").trim();
-    const requestId = String(form.get("request_id") ?? "").trim();
+    requestId = String(form.get("request_id") ?? "").trim();
 
     if (!itemId) {
       const res = NextResponse.json(
@@ -75,32 +88,76 @@ export async function POST(req: NextRequest) {
       return addCorsHeaders(res, req);
     }
 
-    // Ownership check in Monday (repairs board)
-    const monday = await getOwnerTextForItem(itemId, OWNER_COLUMNS.REPAIRS);
-    const currentOwner = (monday.ownerText ?? "").trim();
-    const sessionOwner = (session.monday_status_value || "").toUpperCase();
+    // Ownership check
+    // Primary: Supabase snapshot (mrapple_live_repairs) — rápido y sin depender de
+    // Monday. Si el token de Monday se cae, NO debe tumbar todas las transferencias.
+    // Fallback: Monday GraphQL — cubre items aún no sincronizados o editados a mano.
+    //
+    // El dueño de sesión puede aparecer como el status value (estado_1) o como el
+    // nombre del técnico. Aceptamos ambos, normalizados (sin acentos/espacios).
+    const sessionOwners = new Set(
+      [session.monday_status_value, session.nombre]
+        .map(normalizeOwner)
+        .filter((v) => v !== "")
+    );
+    const matchesSession = (candidate: string | null | undefined): boolean => {
+      const n = normalizeOwner(candidate);
+      return n !== "" && sessionOwners.has(n);
+    };
 
-    let isOwner = currentOwner !== "" && currentOwner.toUpperCase() === sessionOwner;
+    const supabase = getSupabaseServer();
+    const { data: snapshotRepair } = await supabase
+      .from("mrapple_live_repairs")
+      .select("tecnico_nombre")
+      .eq("item_id", itemId)
+      .maybeSingle();
 
-    // Fallback: if estado_1 column is empty, check group title
-    if (!isOwner && !currentOwner && monday.groupTitle) {
-      isOwner = monday.groupTitle.toUpperCase().startsWith(sessionOwner);
+    let isOwner = matchesSession(snapshotRepair?.tecnico_nombre);
+
+    let mondayInfo: Awaited<ReturnType<typeof getOwnerTextForItem>> | null = null;
+    let mondayCheckFailed = false;
+    if (!isOwner) {
+      // Un hiccup de Monday (rate-limit / token caído) NO debe tumbar la request al
+      // catch externo (500): lo aislamos y devolvemos OWNERSHIP_UNVERIFIED (503).
+      try {
+        mondayInfo = await getOwnerTextForItem(itemId, OWNER_COLUMNS.REPAIRS);
+        isOwner = matchesSession(mondayInfo.ownerText);
+
+        // Tolera group titles tipo "JOCEBAN - MAYO 2026" tomando el primer token
+        // antes de cualquier guion.
+        if (!isOwner && mondayInfo.groupTitle) {
+          isOwner = matchesSession(mondayInfo.groupTitle.split(/[-–—]/)[0]);
+        }
+      } catch (e) {
+        mondayCheckFailed = true;
+        console.error("ownership Monday check failed (reparacion):", e);
+      }
     }
 
     if (!isOwner) {
-      const res = NextResponse.json(
-        {
-          success: false,
-          code: "NOT_OWNER",
-          error: "No eres el dueño de esta reparación",
-          details: {
-            item_id: itemId,
-            owner_actual: currentOwner || `[group: ${monday.groupTitle}]`,
-            owner_session: session.monday_status_value,
-          },
+      // Distinguir "Monday no respondió" (no pudimos verificar → reintentar) de
+      // "otro es el dueño" (no reintentar). En ambos casos LIBERAMOS la idempotency
+      // key para que el reintento no quede trabado en 409.
+      const failJson = {
+        success: false,
+        code: mondayCheckFailed ? "OWNERSHIP_UNVERIFIED" : "NOT_OWNER",
+        error: mondayCheckFailed
+          ? "No se pudo verificar el dueño en este momento, intenta de nuevo"
+          : "No eres el dueño de esta reparación",
+        details: {
+          item_id: itemId,
+          owner_supabase: snapshotRepair?.tecnico_nombre ?? null,
+          owner_monday: mondayInfo?.ownerText ?? null,
+          owner_monday_group: mondayInfo?.groupTitle ?? null,
+          owner_session: session.monday_status_value,
+          owner_session_nombre: session.nombre,
+          monday_check_failed: mondayCheckFailed,
         },
-        { status: 403 }
-      );
+      };
+      await markIdempotencyFailed(requestId, "transfer_repair", failJson);
+      const res = NextResponse.json(failJson, {
+        status: mondayCheckFailed ? 503 : 403,
+      });
       return addCorsHeaders(res, req);
     }
 
@@ -158,6 +215,13 @@ export async function POST(req: NextRequest) {
     return addCorsHeaders(res, req);
   } catch (error) {
     console.error("tech-transferir-reparacion error:", error);
+    // Liberar la idempotency key: un fallo transitorio no debe dejar el item
+    // trabado en 409 "Request already processing" en los reintentos.
+    await markIdempotencyFailed(requestId, "transfer_repair", {
+      success: false,
+      code: "SERVER_ERROR",
+      error: String(error),
+    });
     const res = NextResponse.json(
       { success: false, code: "SERVER_ERROR", error: "Error de servidor" },
       { status: 500 }
