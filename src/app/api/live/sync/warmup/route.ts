@@ -72,14 +72,21 @@ export async function POST(request: NextRequest) {
         fetchArray(`${N8N_BASE}/tech-reparaciones?tecnico=${encodeURIComponent(tecnico)}`),
       ]);
       // Ensure tecnico field is set (n8n may return empty for shared-group items)
-      phones.push(...(p as Phone[]).map(ph => ({ ...ph, tecnico: ph.tecnico || tecnico })));
-      repairs.push(...(r as ReparacionCliente[]).map(rp => ({ ...rp, asignado_a: rp.asignado_a || tecnico })));
+      const techPhones = (p as Phone[]).map(ph => ({ ...ph, tecnico: ph.tecnico || tecnico }));
+      const techRepairs = (r as ReparacionCliente[]).map(rp => ({ ...rp, asignado_a: rp.asignado_a || tecnico }));
+
+      // Upsert POR técnico con cleanup: borra los huérfanos de cada uno (equipos
+      // que ya no son suyos en Monday) en vez de solo acumular. Así warmup
+      // reconcilia el snapshot con Monday y nunca deja filas fantasma.
+      await Promise.all([
+        upsertLivePhones(techPhones, sourceTs, { cleanupTecnico: tecnico }),
+        upsertLiveRepairs(techRepairs, sourceTs, { cleanupTecnico: tecnico }),
+      ]);
+
+      phones.push(...techPhones);
+      repairs.push(...techRepairs);
     }
 
-    await Promise.all([
-      upsertLivePhones(phones, sourceTs),
-      upsertLiveRepairs(repairs, sourceTs),
-    ]);
     await refreshTeamSummary(sourceTs);
 
     const res = NextResponse.json({

@@ -109,10 +109,41 @@ export async function readLiveRepairsByTecnico(tecnicoNombre: string): Promise<L
   }
 }
 
-export async function upsertLivePhones(phones: Phone[], sourceTs?: string): Promise<void> {
-  if (!phones.length) return;
+export async function upsertLivePhones(
+  phones: Phone[],
+  sourceTs?: string,
+  options?: { cleanupTecnico?: string }
+): Promise<void> {
   const supabase = getSupabaseServer();
   const nowIso = new Date().toISOString();
+
+  // Si conocemos al técnico, borra sus filas viejas que ya no están en la data
+  // fresca de Monday. Mismo patrón que upsertLiveRepairs. Este es el fix del
+  // drift que infló a DANIELA a 111 filas fantasma: el upsert por item_id nunca
+  // borraba los equipos que dejaron de ser de ella (Tecnico vacío en Monday),
+  // así que se acumulaban indefinidamente.
+  const cleanupTecnico = options?.cleanupTecnico;
+  if (cleanupTecnico) {
+    const freshItemIds = phones
+      .filter((p) => String(p.tecnico || "").trim() === cleanupTecnico)
+      .map((p) => String(p.id));
+    try {
+      let query = supabase
+        .from("mrapple_live_phones")
+        .delete()
+        .eq("tecnico_nombre", cleanupTecnico);
+      if (freshItemIds.length > 0) {
+        query = query.not("item_id", "in", `(${freshItemIds.join(",")})`);
+      }
+      await query;
+    } catch (error) {
+      if (!isMissingLiveSchemaError(error)) {
+        console.error("live phones cleanup error:", error);
+      }
+    }
+  }
+
+  if (!phones.length) return;
 
   const rows = phones.map((phone) => ({
     item_id: String(phone.id),

@@ -85,9 +85,11 @@ export async function GET(request: NextRequest) {
               const fresh = (raw as Phone[]).map(p => ({ ...p, tecnico: p.tecnico || tecnicoQuery }));
               cache.set(cacheKey, fresh, CACHE_TTL.TELEFONOS);
               cache.set(staleKey, fresh, STALE_TTL_MS);
-              upsertLivePhones(fresh).then(() => refreshTeamSummary()).catch((e) => {
-                console.error("stale-refresh phones upsert error:", e);
-              });
+              upsertLivePhones(fresh, undefined, { cleanupTecnico: tecnicoQuery })
+                .then(() => refreshTeamSummary())
+                .catch((e) => {
+                  console.error("stale-refresh phones upsert error:", e);
+                });
             }).catch((e) => console.error("stale-refresh phones n8n error:", e));
           }
 
@@ -111,7 +113,7 @@ export async function GET(request: NextRequest) {
         cache.set(cacheKey, fresh, CACHE_TTL.TELEFONOS);
         cache.set(staleKey, fresh, STALE_TTL_MS);
         if (isLiveSnapshotEnabled()) {
-          try { await upsertLivePhones(fresh); await refreshTeamSummary(); } catch {}
+          try { await upsertLivePhones(fresh, undefined, { cleanupTecnico: tecnicoQuery }); await refreshTeamSummary(); } catch {}
         }
       }).catch(() => {});
       const res = NextResponse.json(staleData);
@@ -130,7 +132,7 @@ export async function GET(request: NextRequest) {
       // Await upsert to guarantee snapshot is populated
       if (isLiveSnapshotEnabled()) {
         try {
-          await upsertLivePhones(n8nData);
+          await upsertLivePhones(n8nData, undefined, { cleanupTecnico: tecnicoQuery });
           await refreshTeamSummary();
         } catch (error) {
           console.error("live phones upsert error:", error);
