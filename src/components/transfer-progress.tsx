@@ -6,6 +6,29 @@ import { Loader2, CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react"
 export interface TransferFailure {
   nombre: string;
   reason: string;
+  /** Código del backend para etiquetar el tipo de error (ERROR_MONDAY, …). */
+  code?: string;
+}
+
+// Etiqueta corta + tono según el origen del error, para que el técnico distinga
+// de un vistazo "esto es un error de Monday" vs "esta reparación no es tuya".
+function failTag(code?: string): { label: string; isMonday: boolean } | null {
+  switch (code) {
+    case "ERROR_MONDAY":
+      return { label: "⚠️ Error de Monday", isMonday: true };
+    case "N8N_ERROR":
+      return { label: "⚙️ Error de automatización", isMonday: true };
+    case "NOT_OWNER":
+      return { label: "No es tuya", isMonday: false };
+    case "SIN_ASIGNAR":
+      return { label: "Sin técnico en Monday", isMonday: false };
+    case "ITEM_NO_EXISTE":
+      return { label: "Ya no existe en Monday", isMonday: false };
+    case "NETWORK":
+      return { label: "Sin conexión", isMonday: false };
+    default:
+      return null;
+  }
 }
 
 export interface TransferJob {
@@ -85,15 +108,31 @@ export function TransferProgress({ job }: TransferProgressProps) {
           </button>
           {showFails && (
             <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto overscroll-contain">
-              {failList.map((f, i) => (
-                <li
-                  key={`${f.nombre}-${i}`}
-                  className="rounded-lg bg-amber-500/[0.08] px-2.5 py-1.5 ring-1 ring-inset ring-amber-500/20"
-                >
-                  <p className="truncate text-xs font-medium text-foreground">{f.nombre}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{f.reason}</p>
-                </li>
-              ))}
+              {failList.map((f, i) => {
+                const tag = failTag(f.code);
+                return (
+                  <li
+                    key={`${f.nombre}-${i}`}
+                    className="rounded-lg bg-amber-500/[0.08] px-2.5 py-1.5 ring-1 ring-inset ring-amber-500/20"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs font-medium text-foreground">{f.nombre}</p>
+                      {tag && (
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                            tag.isMonday
+                              ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                              : "bg-secondary text-muted-foreground"
+                          }`}
+                        >
+                          {tag.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-snug text-muted-foreground">{f.reason}</p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

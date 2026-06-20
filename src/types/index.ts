@@ -105,6 +105,8 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  /** Código de error del backend (NOT_OWNER, SIN_ASIGNAR, ERROR_MONDAY, …). */
+  code?: string;
 }
 
 // @deprecated - Usar fetchTecnicosActivos() de api.ts en su lugar

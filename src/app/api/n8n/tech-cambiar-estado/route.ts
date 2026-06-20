@@ -3,7 +3,7 @@
 // Validates: session + CSRF + ownership in Monday (repairs board) + idempotency
 
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerTextForItem, OWNER_COLUMNS } from "@/lib/monday";
+import { checkRepairOwnership } from "@/lib/repair-ownership";
 import { validateSession, validateCsrf, csrfError } from "@/lib/auth-server";
 import { addCorsHeaders, handleCorsOptions } from "@/lib/cors";
 import {
@@ -13,18 +13,6 @@ import {
 } from "@/lib/idempotency";
 import { cache } from "@/lib/cache";
 import { deleteLiveRepair } from "@/lib/live-snapshot";
-import { getSupabaseServer } from "@/lib/supabase-server";
-
-// Normaliza un nombre de dueño para comparar de forma robusta: sin acentos,
-// sin espacios sobrantes, en mayúsculas. Evita falsos NOT_OWNER por
-// "Sebastián" vs "SEBASTIAN" o por espacios extra en snapshot/Monday.
-function normalizeOwner(value: string | null | undefined): string {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toUpperCase();
-}
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -88,73 +76,29 @@ export async function POST(req: NextRequest) {
       return addCorsHeaders(res, req);
     }
 
-    // Ownership check
-    // Primary: Supabase snapshot (mrapple_live_repairs) — rápido y sin depender de
-    // Monday. Si el token de Monday se cae, NO debe tumbar todos los cambios.
-    // Fallback: Monday GraphQL — cubre items aún no sincronizados o editados a mano.
-    const sessionOwners = new Set(
-      [session.monday_status_value, session.nombre]
-        .map(normalizeOwner)
-        .filter((v) => v !== "")
-    );
-    const matchesSession = (candidate: string | null | undefined): boolean => {
-      const n = normalizeOwner(candidate);
-      return n !== "" && sessionOwners.has(n);
-    };
+    // Ownership check — Monday es la ÚNICA fuente de verdad (columna estado_1).
+    // Códigos claros (NOT_OWNER / SIN_ASIGNAR / ITEM_NO_EXISTE / ERROR_MONDAY).
+    // Siempre liberamos la idempotency key para no trabar el reintento en 409.
+    const ownership = await checkRepairOwnership(itemId, {
+      nombre: session.nombre,
+      monday_status_value: session.monday_status_value,
+    });
 
-    const supabase = getSupabaseServer();
-    const { data: snapshotRepair } = await supabase
-      .from("mrapple_live_repairs")
-      .select("tecnico_nombre")
-      .eq("item_id", itemId)
-      .maybeSingle();
-
-    let isOwner = matchesSession(snapshotRepair?.tecnico_nombre);
-
-    let mondayInfo: Awaited<ReturnType<typeof getOwnerTextForItem>> | null = null;
-    let mondayCheckFailed = false;
-    if (!isOwner) {
-      // Un hiccup de Monday (rate-limit / token caído) NO debe tumbar la request al
-      // catch externo (500): lo aislamos y devolvemos OWNERSHIP_UNVERIFIED (503).
-      try {
-        mondayInfo = await getOwnerTextForItem(itemId, OWNER_COLUMNS.REPAIRS);
-        isOwner = matchesSession(mondayInfo.ownerText);
-
-        // Tolera group titles tipo "JOCEBAN - MAYO 2026" tomando el primer token
-        // antes de cualquier guion.
-        if (!isOwner && mondayInfo.groupTitle) {
-          isOwner = matchesSession(mondayInfo.groupTitle.split(/[-–—]/)[0]);
-        }
-      } catch (e) {
-        mondayCheckFailed = true;
-        console.error("ownership Monday check failed (cambiar-estado):", e);
-      }
-    }
-
-    if (!isOwner) {
-      // Distinguir "Monday no respondió" (reintentar) de "otro es el dueño" (no
-      // reintentar). En ambos casos LIBERAMOS la idempotency key para que el
-      // reintento no quede trabado en 409.
+    if (!ownership.ok) {
       const failJson = {
         success: false,
-        code: mondayCheckFailed ? "OWNERSHIP_UNVERIFIED" : "NOT_OWNER",
-        error: mondayCheckFailed
-          ? "No se pudo verificar el dueño en este momento, intenta de nuevo"
-          : "No eres el dueño de esta reparación",
+        code: ownership.code,
+        error: ownership.error,
         details: {
           item_id: itemId,
-          owner_supabase: snapshotRepair?.tecnico_nombre ?? null,
-          owner_monday: mondayInfo?.ownerText ?? null,
-          owner_monday_group: mondayInfo?.groupTitle ?? null,
+          owner_monday: ownership.ownerMonday,
           owner_session: session.monday_status_value,
           owner_session_nombre: session.nombre,
-          monday_check_failed: mondayCheckFailed,
+          monday_reason: ownership.reason,
         },
       };
       await markIdempotencyFailed(requestId, "repair_status", failJson);
-      const res = NextResponse.json(failJson, {
-        status: mondayCheckFailed ? 503 : 403,
-      });
+      const res = NextResponse.json(failJson, { status: ownership.httpStatus });
       return addCorsHeaders(res, req);
     }
 
@@ -192,10 +136,20 @@ export async function POST(req: NextRequest) {
         console.error("deleteLiveRepair after cambiar-estado:", e);
       }
     } else {
+      // n8n no completó (webhook caído, error de Monday dentro del flujo, etc.).
+      if (!json.code) json.code = "N8N_ERROR";
+      if (!json.error) {
+        json.error =
+          n8nRes.status === 404
+            ? "El flujo de automatización (n8n) no está activo. Avisa al admin."
+            : "El servicio de automatización (n8n) no pudo cambiar el estado. Intenta de nuevo.";
+      }
       await markIdempotencyFailed(requestId, "repair_status", json);
     }
 
-    const res = NextResponse.json(json, { status: n8nRes.status });
+    const res = NextResponse.json(json, {
+      status: n8nRes.ok ? n8nRes.status : n8nRes.status || 502,
+    });
     return addCorsHeaders(res, req);
   } catch (error) {
     console.error("tech-cambiar-estado error:", error);

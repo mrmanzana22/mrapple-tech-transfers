@@ -619,6 +619,10 @@ export default function TecnicoPage() {
         setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
         toast.error(response.error || "Error al actualizar");
+        // Si ya no es del técnico en Monday, sacarlo de la lista (mata fantasmas).
+        if (response.code && ["NOT_OWNER", "SIN_ASIGNAR", "ITEM_NO_EXISTE"].includes(response.code)) {
+          removeReparacionesFromCache([reparacion.id]);
+        }
       }
     } catch {
       toast.error("Error de conexión");
@@ -642,6 +646,9 @@ export default function TecnicoPage() {
         setTimeout(() => forceRefreshReparaciones([reparacion.id]).catch(() => {}), 2000);
       } else {
         toast.error(response.error || "Error al actualizar");
+        if (response.code && ["NOT_OWNER", "SIN_ASIGNAR", "ITEM_NO_EXISTE"].includes(response.code)) {
+          removeReparacionesFromCache([reparacion.id]);
+        }
       }
     } catch {
       toast.error("Error de conexión");
@@ -679,8 +686,13 @@ export default function TecnicoPage() {
               // (Monday y el log con ignore-duplicates no duplican).
               const requestId = generateRequestId();
               const MAX_ATTEMPTS = 3; // 1 intento + 2 reintentos
+              // Errores definitivos de propiedad: la reparación ya no es del
+              // técnico en Monday. No tiene sentido reintentar ni devolverla a la
+              // lista — así se eliminan los items fantasma.
+              const FINAL_CODES = new Set(["NOT_OWNER", "SIN_ASIGNAR", "ITEM_NO_EXISTE"]);
               let ok = false;
               let lastError = "Error al transferir";
+              let lastCode: string | undefined;
               try {
                 for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
                   const response = await transferirReparacion({
@@ -699,6 +711,9 @@ export default function TecnicoPage() {
                     break;
                   }
                   lastError = response.error || lastError;
+                  lastCode = response.code;
+                  // No reintentar errores definitivos de propiedad.
+                  if (lastCode && FINAL_CODES.has(lastCode)) break;
                   // Backoff antes de reintentar (600ms, 1200ms). Evita declarar
                   // fallo por una microcaída de red transitoria.
                   if (attempt < MAX_ATTEMPTS) {
@@ -713,10 +728,14 @@ export default function TecnicoPage() {
                   reparacionStatsRef.current.failures.push({
                     nombre: `${reparacion.cliente_nombre} ${reparacion.cliente_apellido}`.trim() || reparacion.nombre,
                     reason: lastError,
+                    code: lastCode,
                   });
-                  // Rollback: la reparación vuelve a la lista (seguía asignada al técnico).
-                  restoreReparacionesToCache([reparacion]);
-                  console.error("[reparacion-queue] failed", payload.item_id, lastError);
+                  // Solo devolvemos a la lista los fallos transitorios (red /
+                  // Monday saturado / n8n). Si ya no es del técnico, se queda fuera.
+                  if (!(lastCode && FINAL_CODES.has(lastCode))) {
+                    restoreReparacionesToCache([reparacion]);
+                  }
+                  console.error("[reparacion-queue] failed", payload.item_id, lastCode, lastError);
                   logError("transfer-reparacion", new Error(lastError), {
                     item_id: String(payload.item_id),
                     tecnico: tecnico?.nombre,

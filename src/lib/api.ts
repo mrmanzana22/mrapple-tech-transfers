@@ -236,10 +236,12 @@ export async function cambiarEstadoReparacion(
       }),
     });
     const data = await response.json();
-    return data.success ? { success: true, data } : { success: false, error: data.error };
+    return data.success
+      ? { success: true, data }
+      : { success: false, error: data.error, code: data.code };
   } catch (error) {
     console.error("Cambiar estado error:", error);
-    return { success: false, error: "Error de conexión" };
+    return { success: false, error: "Error de conexión", code: "NETWORK" };
   }
 }
 
@@ -302,9 +304,13 @@ export async function transferirReparacion(payload: {
       return { success: true, data: { item_id: data.item_id } };
     }
 
-    return { success: false, error: data.error || "Error al transferir reparación" };
+    return {
+      success: false,
+      error: data.error || "Error al transferir reparación",
+      code: data.code,
+    };
   } catch (error) {
     console.error("Transfer reparacion error:", error);
-    return { success: false, error: "Error de conexión" };
+    return { success: false, error: "Error de conexión", code: "NETWORK" };
   }
 }
