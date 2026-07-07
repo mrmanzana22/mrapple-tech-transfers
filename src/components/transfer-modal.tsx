@@ -522,22 +522,34 @@ export function TransferModal({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Enviando...
+                {targetTechnician ? "Enviando..." : "Guardando..."}
               </>
             ) : isBatch && confirming ? (
-              <>
-                <ArrowRight className="w-4 h-4 mr-2" />
-                Sí, transferir {phones.length}
-              </>
+              targetTechnician ? (
+                <>
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Sí, transferir {phones.length}
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Sí, guardar en {phones.length}
+                </>
+              )
             ) : isBatch ? (
               <>
                 Revisar
                 <ArrowRight className="w-4 h-4 ml-2" />
               </>
-            ) : (
+            ) : targetTechnician ? (
               <>
                 <ArrowRight className="w-4 h-4 mr-2" />
-                Confirmar
+                Guardar comentario y enviar
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Guardar comentario
               </>
             )}
           </Button>

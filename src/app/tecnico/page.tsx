@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePhones } from "@/hooks/use-phones";
 import { useReparaciones } from "@/hooks/use-reparaciones";
 import { subscribeToPush, registerServiceWorker } from "@/lib/push";
-import { cambiarEstadoReparacion, transferirReparacion, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico, generateRequestId } from "@/lib/api";
+import { cambiarEstadoReparacion, transferirReparacion, transferPhone, fetchAllTecnicosWithPhones, type TecnicoWithPhones, fetchTecnicosActivos, getReparacionesCliente, getPhonesByTecnico, generateRequestId } from "@/lib/api";
 import { triggerHaptic, HAPTIC_SUCCESS } from "@/lib/haptic";
 import type { Phone, TransferPayload, ReparacionCliente } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -577,29 +577,79 @@ export default function TecnicoPage() {
     [hidePhones, drainTransferQueue]
   );
 
+  // Solo comentario (sin técnico destino): NO es una transferencia. Guardamos el
+  // comentario/foto pero NO ocultamos el equipo — se queda en la bandeja del
+  // técnico. Sin esto, el ghost filter lo escondía como si se hubiera transferido
+  // "a nadie" y el técnico creía que lo había perdido.
+  const submitPhoneComments = useCallback(
+    async (items: { payload: TransferPayload; nombre: string }[]) => {
+      if (items.length === 0) return;
+      triggerHaptic(HAPTIC_SUCCESS);
+      let ok = 0;
+      let fail = 0;
+      let firstError = "";
+      await Promise.all(
+        items.map(async ({ payload }) => {
+          try {
+            const res = await transferPhone(payload);
+            if (!res.success) throw new Error(res.error || "No se pudo guardar el comentario");
+            ok++;
+          } catch (err) {
+            fail++;
+            if (!firstError) firstError = err instanceof Error ? err.message : "Error desconocido";
+            logError("comentario-telefono", err, {
+              item_id: String(payload.item_id),
+              tecnico: tecnico?.nombre,
+            });
+          }
+        })
+      );
+      // Revalidar para que el comentario recién guardado aparezca en la tarjeta.
+      await fetchPhones();
+      if (fail === 0) {
+        toast.success(ok === 1 ? "Comentario guardado" : `${ok} comentarios guardados`);
+      } else if (ok > 0) {
+        toast.warning(`${ok} guardados, ${fail} fallidos`);
+      } else {
+        toast.error(firstError || "No se pudo guardar el comentario");
+      }
+    },
+    [fetchPhones, tecnico?.nombre]
+  );
+
   const handleTransferConfirm = useCallback(
     async (payload: TransferPayload) => {
       const nombre = selectedPhone?.nombre ?? `Equipo ${payload.item_id}`;
       handleModalClose();
+      // Sin técnico destino = solo comentario: no ocultar, solo guardar.
+      if (!payload.nuevo_tecnico) {
+        await submitPhoneComments([{ payload, nombre }]);
+        return;
+      }
       triggerHaptic(HAPTIC_SUCCESS);
       enqueueTransfers([{ payload, nombre }]);
     },
-    [selectedPhone, handleModalClose, enqueueTransfers]
+    [selectedPhone, handleModalClose, enqueueTransfers, submitPhoneComments]
   );
 
   const handleBatchTransferConfirm = useCallback(
     async (payloads: TransferPayload[]) => {
       const nameMap = new Map(selectedPhones.map((p) => [p.id, p.nombre]));
       handleModalClose();
+      const items = payloads.map((payload) => ({
+        payload,
+        nombre: nameMap.get(payload.item_id) ?? `Equipo ${payload.item_id}`,
+      }));
+      // En un lote el técnico destino es único para todos: si nadie lo tiene,
+      // es un lote de solo-comentario y no debe ocultar ningún equipo.
+      if (payloads.every((p) => !p.nuevo_tecnico)) {
+        await submitPhoneComments(items);
+        return;
+      }
       triggerHaptic(HAPTIC_SUCCESS);
-      enqueueTransfers(
-        payloads.map((payload) => ({
-          payload,
-          nombre: nameMap.get(payload.item_id) ?? `Equipo ${payload.item_id}`,
-        }))
-      );
+      enqueueTransfers(items);
     },
-    [selectedPhones, handleModalClose, enqueueTransfers]
+    [selectedPhones, handleModalClose, enqueueTransfers, submitPhoneComments]
   );
 
   const handleReparadoOficina = async (reparacion: ReparacionCliente) => {
@@ -818,10 +868,36 @@ export default function TecnicoPage() {
       if (!selectedReparacion) return;
       const reparacion = selectedReparacion;
       handleReparacionModalClose();
+      // Sin técnico destino = solo comentario: guardar sin sacar la reparación
+      // de la lista del técnico.
+      if (!payload.nuevo_tecnico) {
+        triggerHaptic(HAPTIC_SUCCESS);
+        try {
+          const res = await transferirReparacion({
+            item_id: payload.item_id,
+            tecnico_actual: payload.tecnico_actual,
+            tecnico_actual_nombre: payload.tecnico_actual_nombre,
+            item_nombre: reparacion.nombre,
+            imei: reparacion.imei,
+            comentario: payload.comentario,
+            foto: payload.foto,
+          });
+          if (!res.success) throw new Error(res.error || "No se pudo guardar el comentario");
+          await refreshReparaciones();
+          toast.success("Comentario guardado");
+        } catch (err) {
+          logError("comentario-reparacion", err, {
+            item_id: String(payload.item_id),
+            tecnico: tecnico?.nombre,
+          });
+          toast.error(err instanceof Error ? err.message : "No se pudo guardar el comentario");
+        }
+        return;
+      }
       triggerHaptic(HAPTIC_SUCCESS);
       enqueueReparacionTransfers([{ payload, reparacion }]);
     },
-    [selectedReparacion, handleReparacionModalClose, enqueueReparacionTransfers]
+    [selectedReparacion, handleReparacionModalClose, enqueueReparacionTransfers, refreshReparaciones, tecnico?.nombre]
   );
 
   // Mini-resumen de carga (M2): conteos para badges en pestañas + cinta.
